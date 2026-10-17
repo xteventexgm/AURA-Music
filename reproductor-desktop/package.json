@@ -1,0 +1,40 @@
+{
+  "name": "aura-desktop",
+  "version": "1.0.0",
+  "description": "AURA - Modern Cyberpunk Music Player for Desktop",
+  "main": "./out/main/index.js",
+  "author": "Steven",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "build:unpack": "npm run build && electron-builder --dir",
+    "build:win": "electron-vite build && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.aura.music",
+    "productName": "AURA",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "resources/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "youtube-dl-exec": "^3.1.7"
+  },
+  "devDependencies": {
+    "electron": "^39.2.6",
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^5.0.0",
+    "vite": "^7.2.6"
+  }
+}

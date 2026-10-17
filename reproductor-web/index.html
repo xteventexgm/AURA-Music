@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>AURA - Reproductor de Música Web</title>
+    <link rel="icon" type="image/png" href="/icon.png" />
+
+    <!-- Google Fonts: Orbitron & Sora -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Sora:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Phosphor Icons -->
+    <script defer src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Librerías QR: QRious (generador) y HTML5-QRCode (lector) -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <script defer src="https://unpkg.com/html5-qrcode"></script>
+
+    <!-- Estilos AURA -->
+    <link rel="stylesheet" href="/src/css/main.css" />
+  </head>
+
+  <body>
+    <div class="app-container">
+      <!-- HEADER SUPERIOR -->
+      <header class="top-header">
+        <div class="brand-wrapper">
+          <img src="/icon.png" alt="AURA" class="brand-logo" />
+          <span class="brand-text">AURA</span>
+        </div>
+
+        <div class="header-badges">
+          <span class="badge-network is-online" id="badgeNetworkStatus">
+            <span class="network-dot"></span> <span id="lblNetworkStatus">ONLINE</span>
+          </span>
+          <button id="btnCarModeToggle" class="btn-header-action" title="Modo Conducción">
+            <i class="ph-bold ph-car"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- ÁREA DE CONTENIDO (VISTAS) -->
+      <main class="main-content">
+        <!-- VISTA 1: BÚSQUEDA -->
+        <section id="vista-busqueda" class="view-section view-active">
+          <!-- Barra de Búsqueda -->
+          <div class="search-container">
+            <div class="search-input-wrapper">
+              <i class="ph ph-magnifying-glass search-icon"></i>
+              <input
+                type="text"
+                id="inputBusqueda"
+                class="search-input"
+                placeholder="¿Qué deseas escuchar hoy en AURA?"
+                autocomplete="off"
+              />
+              <button id="btnClearSearch" class="search-clear-btn" title="Limpiar">
+                <i class="ph-bold ph-x"></i>
+              </button>
+            </div>
+            <button id="btnBuscar" class="btn-primary">
+              <i class="ph-bold ph-magnifying-glass"></i> Buscar
+            </button>
+          </div>
+
+          <!-- Categorías Rápidas -->
+          <div class="quick-categories">
+            <button class="chip-tag" data-query="Rock en español">Rock</button>
+            <button class="chip-tag" data-query="LoFi Hip Hop Chill Beats">LoFi</button>
+            <button class="chip-tag" data-query="Trap Latino 2024">Trap</button>
+            <button class="chip-tag" data-query="Pop Hits 2024">Pop</button>
+            <button class="chip-tag" data-query="Anime Openings Epic">Anime</button>
+            <button class="chip-tag" data-query="Electronic EDM Club">Electrónica</button>
+            <button class="chip-tag" data-query="Reggaeton Clasico y Nuevo">Reggaeton</button>
+            <button class="chip-tag" data-query="Baladas Romanticas">Baladas</button>
+          </div>
+
+          <!-- Búsquedas Recientes -->
+          <div id="seccionRecientes" class="recents-section">
+            <div class="section-header">
+              <h3 class="section-title">
+                <i class="ph ph-clock-counter-clockwise"></i> Recientes
+              </h3>
+              <button id="btnLimpiarRecientes" class="btn-text-action">Limpiar</button>
+            </div>
+            <div id="contenedorRecientes" class="recents-list"></div>
+          </div>
+
+          <!-- Resultados de Búsqueda -->
+          <div class="search-results-section">
+            <ul id="listaBusqueda" class="song-list"></ul>
+          </div>
+        </section>
+
+        <!-- VISTA 2: BIBLIOTECA -->
+        <section id="vista-biblioteca" class="view-section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <i class="ph-fill ph-books"></i> Mis Playlists
+            </h2>
+          </div>
+
+          <!-- Formulario Crear Playlist -->
+          <div class="input-action-row" style="margin-bottom: 20px;">
+            <input
+              type="text"
+              id="inputNuevaPlaylist"
+              placeholder="Nombre de nueva playlist..."
+            />
+            <button id="btnCrearPlaylist" class="btn-primary">
+              <i class="ph-bold ph-plus"></i> Crear
+            </button>
+          </div>
+
+          <!-- Playlists Grid -->
+          <div id="contenedorPlaylists" class="playlists-grid"></div>
+        </section>
+
+        <!-- VISTA 3: DETALLE DE PLAYLIST (Sub-vista) -->
+        <section id="vista-playlist-detalle" class="view-section view-subdetail">
+          <div class="playlist-detail-header">
+            <div class="playlist-detail-top-row">
+              <button id="btnVolverBiblioteca" class="btn-header-action" title="Volver a Biblioteca">
+                <i class="ph-bold ph-caret-left"></i>
+              </button>
+              <h2 id="tituloPlaylistDetalle" class="playlist-detail-title">
+                Playlist
+              </h2>
+              <div id="accionesPlaylistTop" class="playlist-detail-top-actions">
+                <!-- Botones utilitarios: QR, Eliminar -->
+              </div>
+            </div>
+
+            <div class="playlist-detail-action-row">
+              <p id="statsPlaylistDetalle" class="playlist-detail-stats">
+                0 canciones
+              </p>
+              <div id="accionesPlaylistDetalle" class="playlist-detail-actions">
+                <!-- Botones principales: Reproducir Todo, Descargar -->
+              </div>
+            </div>
+          </div>
+
+          <ul id="listaPlaylistDetalle" class="song-list"></ul>
+        </section>
+
+        <!-- VISTA 4: AJUSTES Y CUENTA -->
+        <section id="vista-perfil" class="view-section">
+          <div class="section-header" style="margin-bottom: 20px;">
+            <h2 class="section-title">
+              <i class="ph-fill ph-gear"></i> Ajustes y Utilidades
+            </h2>
+          </div>
+
+          <!-- Importar desde YouTube -->
+          <div class="settings-group">
+            <h3 class="settings-group-title" style="color: #ff3366;">
+              <i class="ph-fill ph-youtube-logo"></i> Importar Canción o Playlist
+            </h3>
+            <p class="settings-group-desc">
+              Pega un enlace de video o de playlist pública de YouTube para añadirla a tu biblioteca.
+            </p>
+            <div class="input-action-row" style="margin-bottom: 10px;">
+              <input
+                type="text"
+                id="inputImportarUrl"
+                placeholder="https://youtube.com/watch?v=... o https://youtube.com/playlist?list=..."
+              />
+              <button id="btnImportarUrl" class="btn-primary">
+                Importar
+              </button>
+            </div>
+          </div>
+
+          <!-- Compartir y Recibir por QR -->
+          <div class="settings-group">
+            <h3 class="settings-group-title" style="color: var(--neon-lime);">
+              <i class="ph-fill ph-qr-code"></i> Transferir por Código QR
+            </h3>
+            <p class="settings-group-desc">
+              Escanea con tu cámara o sube una imagen de código QR compartida desde otro dispositivo.
+            </p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button id="btnAbrirEscanerCamara" class="btn-primary" style="background: var(--neon-lime); color: #020205;">
+                <i class="ph-bold ph-camera"></i> Escanear con Cámara
+              </button>
+              <label class="btn-primary" style="display: inline-flex; align-items: center; justify-content: center; background: var(--bg-surface); color: var(--neon-lime); border: 1px solid var(--neon-lime); cursor: pointer;">
+                <i class="ph-bold ph-image"></i>
+                <span>Escanear desde Imagen</span>
+                <input type="file" id="inputScanQrFile" accept="image/*" style="display: none;" />
+              </label>
+            </div>
+            <div id="lector-camara-container" class="hidden" style="margin-top: 16px; border-radius: 12px; overflow: hidden; border: 2px solid var(--neon-lime);">
+              <div id="lector-qr-camera" style="width: 100%; min-height: 250px;"></div>
+              <button id="btnCerrarCamara" style="width: 100%; padding: 12px; background: #ff3366; color: #fff; font-weight: 700;">
+                Cancelar Escáner
+              </button>
+            </div>
+          </div>
+
+          <!-- Copia de Seguridad -->
+          <div class="settings-group">
+            <h3 class="settings-group-title" style="color: var(--neon-cyan);">
+              <i class="ph-fill ph-floppy-disk"></i> Copia de Seguridad (JSON)
+            </h3>
+            <p class="settings-group-desc">
+              Exporta todas tus playlists en un archivo ligero o importa una copia previa de AURA / Reproductor MVP.
+            </p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button id="btnExportarBackup" class="btn-primary">
+                <i class="ph-bold ph-download-simple"></i> Exportar Playlists
+              </button>
+              <label class="btn-primary" style="display: inline-flex; align-items: center; justify-content: center; background: var(--bg-surface); color: var(--neon-cyan); border: 1px solid var(--neon-cyan); cursor: pointer;">
+                <i class="ph-bold ph-upload-simple"></i>
+                <span>Importar Respaldo</span>
+                <input type="file" id="inputImportarBackup" accept=".json" style="display: none;" />
+              </label>
+            </div>
+          </div>
+
+          <!-- Configuración de API Keys -->
+          <div class="settings-group">
+            <h3 class="settings-group-title" style="color: var(--neon-gold);">
+              <i class="ph-fill ph-key"></i> Llaves de API (RapidAPI & YouTube)
+            </h3>
+            <p class="settings-group-desc">
+              AURA incluye llaves preconfiguradas con rotación automática. Si deseas añadir tus propias llaves personales de RapidAPI (youtube-mp36) o YouTube Data v3, puedes administrarlas aquí.
+            </p>
+
+            <!-- Lista de RapidAPI Keys -->
+            <div style="margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-weight: 600; font-size: 0.9rem;">RapidAPI Keys (Streaming):</span>
+                <span id="lblCountRapidKeys" style="font-size: 0.8rem; color: var(--neon-cyan);">6 llaves</span>
+              </div>
+              <ul id="listaRapidKeys" style="list-style: none; max-height: 160px; overflow-y: auto; background: var(--bg-surface); border-radius: 10px; padding: 10px; margin-bottom: 10px;"></ul>
+              <div class="input-action-row">
+                <input type="text" id="inputNewRapidKey" placeholder="Pegar nueva RapidAPI Key..." />
+                <button id="btnAddRapidKey" class="btn-primary" style="padding: 0 16px;">
+                  <i class="ph-bold ph-plus"></i>
+                </button>
+              </div>
+              <button id="btnResetRapidKeys" class="btn-text-action" style="margin-top: 8px; color: var(--neon-gold);">
+                Restaurar llaves por defecto
+              </button>
+            </div>
+
+            <!-- YouTube Data API Key -->
+            <div>
+              <span style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 8px;">
+                YouTube Data API v3 Key (Búsquedas):
+              </span>
+              <div class="input-action-row">
+                <input type="text" id="inputYoutubeKey" placeholder="AIzaSy..." />
+                <button id="btnSaveYoutubeKey" class="btn-primary" style="padding: 0 16px;">
+                  <i class="ph-bold ph-floppy-disk"></i>
+                </button>
+              </div>
+              <button id="btnResetYoutubeKey" class="btn-text-action" style="margin-top: 8px; color: #ff3366;">
+                Restaurar llave YouTube por defecto
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- BARRA DE REPRODUCCIÓN FLOTANTE (DOCK INFERIOR) -->
+      <footer id="playerBar" class="player-bar hidden">
+        <div id="playerBarProgressWrapper" class="player-bar-progress" title="Clic para saltar en la canción">
+          <div id="playerBarFill" class="player-bar-progress-fill"></div>
+        </div>
+
+        <div id="playerBarInfoClick" class="player-bar-left">
+          <img id="playerBarThumb" src="/icon.png" alt="Track" class="player-bar-thumb" />
+          <div class="player-bar-info">
+            <div class="marquee-wrapper">
+              <div id="playerBarTitleTrack" class="marquee-track">
+                <h4 id="playerBarTitle" class="player-bar-title">Selecciona una canción</h4>
+              </div>
+            </div>
+            <p id="playerBarArtist" class="player-bar-artist">AURA Music</p>
+          </div>
+        </div>
+
+        <div class="player-bar-controls" onclick="event.stopPropagation()">
+          <button id="btnBarShuffle" class="btn-ctrl" title="Aleatorio">
+            <i class="ph-bold ph-shuffle"></i>
+          </button>
+          <button id="btnBarRepeat" class="btn-ctrl" title="Repetir">
+            <i class="ph-bold ph-repeat"></i>
+          </button>
+          <button id="btnBarPrev" class="btn-ctrl" title="Anterior">
+            <i class="ph-fill ph-skip-back"></i>
+          </button>
+          <button id="btnBarPlay" class="btn-ctrl btn-ctrl-play" title="Reproducir">
+            <i class="ph-fill ph-play"></i>
+          </button>
+          <button id="btnBarNext" class="btn-ctrl" title="Siguiente">
+            <i class="ph-fill ph-skip-forward"></i>
+          </button>
+        </div>
+      </footer>
+
+      <!-- BARRA DE NAVEGACIÓN INFERIOR (TABS) -->
+      <nav class="bottom-nav">
+        <button id="tabBuscar" class="nav-tab-btn tab-active" data-view="vista-busqueda">
+          <i class="ph-bold ph-magnifying-glass nav-icon"></i>
+          <span class="nav-label">Buscar</span>
+        </button>
+
+        <button id="tabBiblioteca" class="nav-tab-btn" data-view="vista-biblioteca">
+          <i class="ph-bold ph-books nav-icon"></i>
+          <span class="nav-label">Biblioteca</span>
+        </button>
+
+        <button id="tabPerfil" class="nav-tab-btn" data-view="vista-perfil">
+          <i class="ph-bold ph-gear nav-icon"></i>
+          <span class="nav-label">Ajustes</span>
+        </button>
+      </nav>
+
+      <!-- REPRODUCTOR FULLSCREEN (DESLIZABLE) -->
+      <div id="fullscreenPlayer" class="fullscreen-player">
+        <div class="fs-header">
+          <button id="btnFsClose" class="btn-header-action" title="Minimizar">
+            <i class="ph-bold ph-caret-down"></i>
+          </button>
+          <span class="fs-header-title">REPRODUCIENDO EN AURA</span>
+          <button id="btnFsQueue" class="btn-header-action" title="Cola de Reproducción">
+            <i class="ph-bold ph-queue"></i>
+          </button>
+        </div>
+
+        <div class="fs-visual-container">
+          <canvas id="ecualizadorVisual" class="fs-visualizer-canvas"></canvas>
+          <div id="fsVinylWrapper" class="fs-vinyl-wrapper">
+            <img id="fsVinylImg" src="/icon.png" alt="Disco" class="fs-vinyl-img" />
+            <div class="fs-vinyl-center-dot"></div>
+          </div>
+        </div>
+
+        <div class="fs-track-info">
+          <div class="marquee-wrapper">
+            <div id="fsTrackTitleTrack" class="marquee-track">
+              <h2 id="fsTrackTitle" class="fs-track-title">Selecciona una pista</h2>
+            </div>
+          </div>
+          <p id="fsTrackArtist" class="fs-track-artist">AURA Music</p>
+        </div>
+
+        <div class="fs-progress-container">
+          <div class="fs-time-row">
+            <span id="fsTimeCurrent">0:00</span>
+            <span id="fsTimeTotal">0:00</span>
+          </div>
+          <div class="fs-slider-wrapper">
+            <input
+              type="range"
+              id="fsProgressSlider"
+              class="fs-slider"
+              min="0"
+              max="100"
+              value="0"
+              step="0.1"
+            />
+            <div id="fsSliderTooltip" class="fs-slider-tooltip">0:00</div>
+          </div>
+        </div>
+
+        <div class="fs-main-controls">
+          <button id="btnFsShuffle" class="fs-btn-secondary" title="Aleatorio">
+            <i class="ph-bold ph-shuffle"></i>
+          </button>
+          <button id="btnFsRepeat" class="fs-btn-secondary" title="Repetir">
+            <i class="ph-bold ph-repeat"></i>
+          </button>
+          <button id="btnFsPrev" class="fs-btn-skip" title="Anterior">
+            <i class="ph-fill ph-skip-back"></i>
+          </button>
+          <button id="btnFsPlay" class="fs-btn-play-large" title="Reproducir">
+            <i class="ph-fill ph-play"></i>
+          </button>
+          <button id="btnFsNext" class="fs-btn-skip" title="Siguiente">
+            <i class="ph-fill ph-skip-forward"></i>
+          </button>
+          <button id="btnFsFav" class="fs-btn-secondary" title="Favorito">
+            <i class="ph-bold ph-heart"></i>
+          </button>
+        </div>
+
+        <!-- Fila extra: Volumen Interactivo -->
+        <div class="fs-extra-controls">
+          <i id="btnFsVolumeIcon" class="ph-bold ph-speaker-high btn-volume-icon" title="Silenciar / Activar"></i>
+          <input type="range" id="fsVolumeSlider" class="volume-slider" min="0" max="1" step="0.01" value="1" title="Volumen" />
+        </div>
+      </div>
+
+      <!-- DRAWER DE COLA DE REPRODUCCIÓN -->
+      <div id="queueDrawer" class="queue-drawer">
+        <div class="queue-drawer-header">
+          <h3 style="font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+            <i class="ph-bold ph-list-dashes"></i> Cola de Reproducción
+          </h3>
+          <div style="display: flex; gap: 8px;">
+            <button id="btnClearQueue" class="btn-text-action" style="color: #ff3366;">
+              Vaciar
+            </button>
+            <button id="btnCloseQueue" class="btn-icon-subtle">
+              <i class="ph-bold ph-x"></i>
+            </button>
+          </div>
+        </div>
+        <div class="queue-list-container">
+          <ul id="listaCola" class="song-list"></ul>
+        </div>
+      </div>
+
+      <!-- MODAL AÑADIR A PLAYLIST -->
+      <div id="modalAddToPlaylist" class="modal-overlay">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3 class="modal-title">Añadir a Playlist</h3>
+            <button id="btnCloseModalAddPl" class="modal-close-btn">
+              <i class="ph-bold ph-x"></i>
+            </button>
+          </div>
+
+          <!-- Previsualización de la pista seleccionada -->
+          <div class="modal-track-preview">
+            <img id="modalAddSongThumb" src="/icon.png" alt="Cover" class="modal-track-thumb" />
+            <div class="modal-track-details">
+              <h4 id="modalAddSongTitle" class="modal-track-name">--</h4>
+              <p id="modalAddSongArtist" class="modal-track-artist">AURA Music</p>
+            </div>
+          </div>
+
+          <!-- Creador rápido de playlist dentro del modal -->
+          <div class="modal-quick-create">
+            <input type="text" id="inputModalNewPlaylist" placeholder="Nombre de nueva lista..." autocomplete="off" />
+            <button id="btnModalCreatePlaylist" class="btn-primary">
+              <i class="ph-bold ph-plus"></i> Crear
+            </button>
+          </div>
+
+          <!-- Filtro rápido de playlists si hay muchas -->
+          <div class="modal-search-box">
+            <i class="ph-bold ph-magnifying-glass"></i>
+            <input type="text" id="inputModalFilterPlaylists" placeholder="Filtrar tus playlists..." autocomplete="off" />
+          </div>
+
+          <!-- Lista scrolleable con diseño tipo lista nativa -->
+          <div id="modalPlaylistsList" class="modal-playlist-list">
+            <!-- Renderizado dinámico de playlists -->
+          </div>
+
+          <button id="btnModalDoneAddPl" class="btn-primary" style="margin-top: 14px; width: 100%;">
+            Listo
+          </button>
+        </div>
+      </div>
+
+      <!-- MODAL COMPARTIR QR -->
+      <div id="modalShareQr" class="modal-overlay">
+        <div class="modal-card" style="text-align: center;">
+          <div class="modal-header">
+            <h3 id="modalShareQrTitle" class="modal-title">Compartir Código QR</h3>
+            <button id="btnCloseModalShareQr" class="modal-close-btn">
+              <i class="ph-bold ph-x"></i>
+            </button>
+          </div>
+          <div style="background: #0b0b14; padding: 20px; border-radius: 16px; display: inline-block; margin-bottom: 16px;">
+            <canvas id="qrCodeCanvas"></canvas>
+          </div>
+          <p id="modalShareQrSubtitle" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
+            Escanea este código con otro dispositivo AURA para reproducir al instante.
+          </p>
+          <button id="btnCopyQrPayload" class="btn-primary" style="width: 100%;">
+            <i class="ph-bold ph-copy"></i> Copiar Enlace Directo
+          </button>
+        </div>
+      </div>
+
+      <!-- VISTA MODO CONDUCCIÓN (CAR MODE) -->
+      <div id="vista-car-mode" class="car-mode-view vista-oculta">
+        <div class="car-header">
+          <div class="car-badge">
+            <i class="ph-bold ph-car"></i> MODO CONDUCCIÓN
+          </div>
+          <button id="btnExitCarMode" class="btn-car-exit">
+            <i class="ph-bold ph-x"></i> Salir
+          </button>
+        </div>
+
+        <div class="car-track-info">
+          <h1 id="carTitulo" class="car-title">AURA Music</h1>
+          <h2 id="carArtista" class="car-artist">Listo para conducir</h2>
+        </div>
+
+        <div class="car-controls">
+          <button id="carBtnPrev" class="car-btn" title="Anterior">
+            <i class="ph-fill ph-skip-back"></i>
+          </button>
+          <button id="carBtnPlay" class="car-btn car-btn-play-massive" title="Play">
+            <i class="ph-fill ph-play"></i>
+          </button>
+          <button id="carBtnNext" class="car-btn" title="Siguiente">
+            <i class="ph-fill ph-skip-forward"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Hidden canvas / element for image file QR scanner -->
+      <div id="qr-hidden-scanner" style="display: none;"></div>
+
+      <!-- ACTION SHEET: MENÚ DE CANCIÓN (3 PUNTOS MÓVIL) -->
+      <div id="modalSongActions" class="modal-overlay action-sheet-modal">
+        <div class="modal-card action-sheet-card">
+          <div class="action-sheet-header">
+            <img id="songActionThumb" src="/icon.png" alt="Cover" class="action-sheet-thumb" />
+            <div class="action-sheet-info">
+              <h4 id="songActionTitle" class="action-sheet-title">Título de la Canción</h4>
+              <p id="songActionArtist" class="action-sheet-artist">Artista</p>
+            </div>
+            <button id="btnCloseSongActions" class="modal-close-btn">
+              <i class="ph-bold ph-x"></i>
+            </button>
+          </div>
+          <div class="action-sheet-body">
+            <button id="btnActionPlayNow" class="action-sheet-item">
+              <i class="ph-fill ph-play action-icon-cyan"></i>
+              <span>Reproducir ahora</span>
+            </button>
+            <button id="btnActionAddToQueue" class="action-sheet-item">
+              <i class="ph-bold ph-list-plus action-icon-cyan"></i>
+              <span>Agregar a la cola</span>
+            </button>
+            <button id="btnActionToggleFav" class="action-sheet-item">
+              <i id="iconActionFav" class="ph-bold ph-heart action-icon-magenta"></i>
+              <span id="lblActionFav">Marcar como Favorita</span>
+            </button>
+            <button id="btnActionDownload" class="action-sheet-item">
+              <i id="iconActionDownload" class="ph-bold ph-download-simple action-icon-gold"></i>
+              <span id="lblActionDownload">Descargar Canción (MP3)</span>
+            </button>
+            <button id="btnActionAddToPlaylist" class="action-sheet-item">
+              <i class="ph-bold ph-playlist action-icon-cyan"></i>
+              <span>Agregar a una Playlist...</span>
+            </button>
+            <button id="btnActionShareQr" class="action-sheet-item">
+              <i class="ph-bold ph-qr-code action-icon-cyan"></i>
+              <span>Compartir por Código QR</span>
+            </button>
+            <button id="btnActionRemoveFromPlaylist" class="action-sheet-item action-sheet-danger" style="display: none;">
+              <i class="ph-bold ph-trash action-icon-red"></i>
+              <span>Quitar de esta Playlist</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION SHEET: MENÚ DE PLAYLIST (3 PUNTOS MÓVIL) -->
+      <div id="modalPlaylistActions" class="modal-overlay action-sheet-modal">
+        <div class="modal-card action-sheet-card">
+          <div class="action-sheet-header">
+            <div class="playlist-sheet-icon">
+              <i class="ph-fill ph-music-notes"></i>
+            </div>
+            <div class="action-sheet-info">
+              <h4 id="playlistActionTitle" class="action-sheet-title">Nombre Playlist</h4>
+              <p id="playlistActionCount" class="action-sheet-artist">0 canciones</p>
+            </div>
+            <button id="btnClosePlaylistActions" class="modal-close-btn">
+              <i class="ph-bold ph-x"></i>
+            </button>
+          </div>
+          <div class="action-sheet-body">
+            <button id="btnPlActionDownloadAll" class="action-sheet-item">
+              <i class="ph-bold ph-download-simple action-icon-cyan"></i>
+              <span>Descargar todas las canciones</span>
+            </button>
+            <button id="btnPlActionDeleteDownloads" class="action-sheet-item action-sheet-warning">
+              <i class="ph-bold ph-trash-simple action-icon-gold"></i>
+              <span>Eliminar canciones descargadas</span>
+            </button>
+            <button id="btnPlActionShareQr" class="action-sheet-item">
+              <i class="ph-bold ph-qr-code action-icon-cyan"></i>
+              <span>Compartir Playlist por QR</span>
+            </button>
+            <button id="btnPlActionDeletePlaylist" class="action-sheet-item action-sheet-danger" style="display: none;">
+              <i class="ph-bold ph-trash action-icon-red"></i>
+              <span>Eliminar esta Playlist</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenedor de Notificaciones Toast -->
+      <div id="toast-container"></div>
+    </div>
+
+    <!-- Script Principal Modular de AURA Web -->
+    <script type="module" src="/src/js/main.js"></script>
+  </body>
+</html>

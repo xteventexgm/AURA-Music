@@ -1,0 +1,36 @@
+# Dependencias
+**/node_modules/
+package-lock.json.bak
+reproductor-mvp/
+
+# Compilaciones y binarios generados
+**/dist/
+**/dist-electron/
+**/out/
+**/build/
+**/.cache/
+*.apk
+*.aab
+AURA-Music-Android.apk
+
+# Android & Gradle
+**/.gradle/
+**/android/app/build/
+**/android/build/
+captures/
+
+# Variables de entorno y datos locales
+**/.env
+**/.env.local
+server/.env
+server/downloads/
+server/uploads/
+
+# Logs del sistema y editores
+*.log
+*.log*
+.DS_Store
+Thumbs.db
+.eslintcache
+.idea/
+.vscode/

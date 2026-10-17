@@ -1,0 +1,14 @@
+{
+  "appId": "com.aura.music",
+  "appName": "AURA",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "MediaSession": {
+      "foregroundService": "always"
+    }
+  }
+}

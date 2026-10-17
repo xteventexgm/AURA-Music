@@ -1,0 +1,51 @@
+/* ==========================================
+   AURA Music - Design System & Tokens
+========================================== */
+
+:root {
+  /* Fondos y Superficies */
+  --bg-deep: #050509;
+  --bg-main: #090912;
+  --bg-card: rgba(18, 18, 30, 0.7);
+  --bg-card-hover: rgba(28, 28, 46, 0.85);
+  --bg-surface: #12121f;
+  --bg-glass: rgba(14, 14, 24, 0.82);
+
+  /* Bordes */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-glass: rgba(0, 240, 255, 0.18);
+  --border-magenta: rgba(255, 46, 196, 0.3);
+
+  /* Acentos Neón AURA */
+  --neon-cyan: #00f0ff;
+  --neon-magenta: #ff2ec4;
+  --neon-lime: #c6ff00;
+  --neon-gold: #ffb703;
+  --neon-red: #ff3366;
+
+  /* Resplandores Glow */
+  --glow-cyan: 0 0 15px rgba(0, 240, 255, 0.45);
+  --glow-cyan-sm: 0 0 8px rgba(0, 240, 255, 0.35);
+  --glow-magenta: 0 0 18px rgba(255, 46, 196, 0.5);
+  --glow-lime: 0 0 14px rgba(198, 255, 0, 0.4);
+
+  /* Texto */
+  --text-main: #f0f2f8;
+  --text-muted: #8b92a5;
+  --text-dim: #545b70;
+
+  /* Tipografías */
+  --font-brand: 'Orbitron', -apple-system, sans-serif;
+  --font-body: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Transiciones y Sombras */
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow-card: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-float: 0 20px 40px rgba(0, 0, 0, 0.6);
+
+  /* Dimensiones Clave */
+  --header-height: 64px;
+  --bottom-bar-height: 72px;
+  --player-bar-height: 76px;
+}

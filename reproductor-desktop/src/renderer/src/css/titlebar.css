@@ -1,0 +1,370 @@
+/* ==========================================
+   AURA Desktop - Custom Cyberpunk Titlebar
+========================================== */
+
+body {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.desktop-titlebar {
+  height: 40px;
+  width: 100%;
+  background: rgba(7, 7, 14, 0.98);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 12px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-app-region: drag;
+  z-index: 9999;
+  flex-shrink: 0;
+}
+
+.app-container {
+  height: calc(100vh - 40px) !important;
+  flex: 1;
+  min-height: 0;
+}
+
+.titlebar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  object-fit: cover;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+}
+
+.titlebar-brand {
+  font-family: var(--font-brand);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  background: linear-gradient(135deg, #ffffff 40%, var(--neon-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.titlebar-badge {
+  font-size: 0.62rem;
+  font-family: var(--font-brand);
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(0, 240, 255, 0.1);
+  color: var(--neon-cyan);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  letter-spacing: 0.5px;
+}
+
+.titlebar-center {
+  flex: 1;
+  text-align: center;
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 20px;
+}
+
+.titlebar-center.is-playing {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+}
+
+.titlebar-right {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-btn {
+  width: 36px;
+  height: 30px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  line-height: 1;
+  transition: all 0.15s ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+}
+
+.titlebar-btn i {
+  font-style: normal;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 1.05rem;
+}
+
+.titlebar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+
+.titlebar-btn.btn-close:hover {
+  background: #ff3366;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 51, 102, 0.6);
+}
+
+.titlebar-btn.btn-mini:hover,
+.titlebar-btn.btn-mini.active {
+  color: var(--neon-cyan);
+  background: rgba(0, 240, 255, 0.15);
+}
+
+/* Badge de música descargada offline */
+.badge-offline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--neon-lime);
+  background: rgba(198, 255, 0, 0.1);
+  border: 1px solid rgba(198, 255, 0, 0.25);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+/* ==========================================
+   MODO MINI-PLAYER FLOTANTE (PiP)
+========================================== */
+
+body.mini-player-active .app-container {
+  display: none !important;
+}
+
+body.mini-player-active .desktop-titlebar {
+  height: 28px;
+  padding: 0 6px 0 8px;
+  background: rgba(7, 7, 14, 0.98);
+}
+
+body.mini-player-active .titlebar-brand {
+  font-size: 0.7rem;
+}
+
+body.mini-player-active .titlebar-badge,
+body.mini-player-active .titlebar-center {
+  display: none !important;
+}
+
+body.mini-player-active .titlebar-btn {
+  width: 26px;
+  height: 22px;
+  font-size: 0.85rem;
+}
+
+body.mini-player-active #vista-mini-player {
+  display: flex !important;
+}
+
+.mini-player-container {
+  display: none;
+  width: 100%;
+  height: calc(100vh - 28px);
+  background: linear-gradient(180deg, #07070e 0%, #0d0d18 100%);
+  padding: 8px 12px 10px 12px;
+  flex-direction: column;
+  justify-content: space-between;
+  user-select: none;
+  -webkit-app-region: drag;
+  overflow: hidden;
+}
+
+.mini-card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.mini-top-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mini-cover-wrapper {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+
+.mini-cover {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
+.mini-cover-wrapper.is-playing .mini-cover {
+  animation: spinVinyl 6s linear infinite;
+  border-radius: 50%;
+}
+
+.mini-track-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mini-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.mini-artist {
+  font-size: 0.72rem;
+  color: var(--neon-cyan);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.mini-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.95rem;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-action-btn:hover {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+}
+
+.mini-action-btn.is-fav {
+  color: var(--neon-magenta);
+}
+
+/* Fila de Progreso Mini */
+.mini-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  -webkit-app-region: no-drag;
+}
+
+.mini-time {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  font-family: monospace;
+  min-width: 26px;
+}
+
+.mini-progress-bar-wrapper {
+  flex: 1;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.mini-progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+  border-radius: 3px;
+  transition: width 0.1s linear;
+}
+
+/* Fila de Controles Mini */
+.mini-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  -webkit-app-region: no-drag;
+}
+
+.mini-ctrl-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--text-main);
+  font-size: 1.05rem;
+  background: transparent;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--neon-cyan);
+}
+
+.mini-ctrl-btn.mini-btn-play {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--neon-cyan), #0088ff);
+  color: #05050d;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.45);
+}
+
+.mini-ctrl-btn.mini-btn-play:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.7);
+}
+
+.mini-ctrl-btn.mini-btn-subtle {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.mini-ctrl-btn.active {
+  color: var(--neon-cyan);
+}

@@ -1,0 +1,23 @@
+/* ==========================================
+   AURA Music - Main Stylesheet
+========================================== */
+
+@import './variables.css';
+@import './base.css';
+@import './layout.css';
+@import './components.css';
+@import './player.css';
+@import './car-mode.css';
+
+/* Utility Classes */
+.hidden {
+  display: none !important;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}

@@ -1,0 +1,122 @@
+/* ==========================================
+   AURA Music - Modo Conducción (Car Mode)
+========================================== */
+
+.car-mode-view {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #020205;
+  color: #ffffff;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 32px 24px;
+  z-index: 150;
+}
+
+.car-mode-view.open,
+.car-mode-view:not(.vista-oculta) {
+  display: flex;
+}
+
+.car-mode-view.vista-oculta {
+  display: none !important;
+}
+
+.car-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.12);
+}
+
+.car-badge {
+  font-family: var(--font-brand);
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--neon-gold);
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-car-exit {
+  padding: 12px 24px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  gap: 8px;
+}
+
+.btn-car-exit:hover {
+  background: rgba(255, 51, 102, 0.25);
+  border-color: var(--neon-red);
+}
+
+.car-track-info {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.car-title {
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1.2;
+  margin-bottom: 12px;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+}
+
+.car-artist {
+  font-size: clamp(1.1rem, 3.5vw, 1.6rem);
+  color: var(--neon-cyan);
+  font-weight: 600;
+}
+
+.car-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  padding-bottom: 30px;
+}
+
+.car-btn {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: #141422;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 2.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+}
+
+.car-btn:hover {
+  border-color: var(--neon-cyan);
+  background: #1e1e32;
+  transform: scale(1.05);
+}
+
+.car-btn.car-btn-play-massive {
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
+  color: #020205;
+  font-size: 3.5rem;
+  box-shadow: 0 0 40px rgba(0, 240, 255, 0.6);
+  border: none;
+}
+
+.car-btn.car-btn-play-massive:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 60px rgba(255, 46, 196, 0.8);
+}
