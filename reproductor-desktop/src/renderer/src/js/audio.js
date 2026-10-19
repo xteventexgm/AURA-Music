@@ -50,16 +50,28 @@ class AudioEngine {
   setupListeners() {
     this.audio.addEventListener('play', () => {
       this.updateMediaSessionState('playing');
+      this.updateMediaSessionPosition();
       this.callbacks.onPlay(this.currentTrack);
     });
 
     this.audio.addEventListener('pause', () => {
       this.updateMediaSessionState('paused');
+      this.updateMediaSessionPosition();
       this.callbacks.onPause(this.currentTrack);
     });
 
+    let lastPositionSync = 0;
     this.audio.addEventListener('timeupdate', () => {
       this.callbacks.onTimeUpdate(this.audio.currentTime, this.audio.duration);
+      const now = Date.now();
+      if (now - lastPositionSync > 1500) {
+        lastPositionSync = now;
+        this.updateMediaSessionPosition();
+      }
+    });
+
+    this.audio.addEventListener('seeked', () => {
+      this.updateMediaSessionPosition();
     });
 
     this.audio.addEventListener('durationchange', () => {
@@ -99,6 +111,44 @@ class AudioEngine {
     }
   }
 
+  getTrackDurationSeconds(track) {
+    if (!track) return 0;
+    if (typeof track.seconds === 'number' && track.seconds > 0) return track.seconds;
+    const durStr = track.duracion || track.duration;
+    if (durStr && typeof durStr === 'string') {
+      const parts = durStr.split(':').map(Number);
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return parts[0] * 60 + parts[1];
+      }
+      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      }
+    }
+    return 0;
+  }
+
+  setMediaSessionPosition(duration, position = 0, rate = 1.0) {
+    if (!('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) return;
+    const dur = Math.max(0, Number(duration) || 0);
+    const pos = Math.min(dur > 0 ? dur : 0, Math.max(0, Number(position) || 0));
+    try {
+      if (dur > 0) {
+        navigator.mediaSession.setPositionState({
+          duration: dur,
+          playbackRate: rate,
+          position: pos
+        });
+      }
+    } catch (err) {
+      console.warn('[AudioEngine] setPositionState warning:', err);
+    }
+  }
+
+  resetMediaSessionPosition(track) {
+    const durSec = this.getTrackDurationSeconds(track);
+    this.setMediaSessionPosition(durSec > 0 ? durSec : 0, 0, 1.0);
+  }
+
   updateMediaSessionMetadata(track) {
     if (!('mediaSession' in navigator) || !track) return;
 
@@ -107,7 +157,7 @@ class AudioEngine {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: track.titulo || track.title || 'AURA Music',
         artist: track.channel || 'AURA Streaming',
-        album: 'AURA Web Player',
+        album: 'AURA Desktop Player',
         artwork: [
           { src: artworkSrc, sizes: '96x96', type: 'image/jpeg' },
           { src: artworkSrc, sizes: '128x128', type: 'image/jpeg' },
@@ -128,16 +178,13 @@ class AudioEngine {
   }
 
   updateMediaSessionPosition() {
-    if (!('mediaSession' in navigator) || isNaN(this.audio.duration)) return;
-    try {
-      if ('setPositionState' in navigator.mediaSession) {
-        navigator.mediaSession.setPositionState({
-          duration: this.audio.duration || 0,
-          playbackRate: this.audio.playbackRate || 1.0,
-          position: this.audio.currentTime || 0
-        });
-      }
-    } catch {}
+    let dur = this.audio.duration;
+    if (isNaN(dur) || dur <= 0 || !isFinite(dur)) {
+      dur = this.getTrackDurationSeconds(this.currentTrack);
+    }
+    if (dur > 0) {
+      this.setMediaSessionPosition(dur, this.audio.currentTime || 0, this.audio.playbackRate || 1.0);
+    }
   }
 
   /**
@@ -149,6 +196,10 @@ class AudioEngine {
     this.currentTrack = track;
     this.isLoading = true;
     this.callbacks.onLoading(track);
+
+    // Reiniciar inmediatamente metadatos y tiempo en la notificación para no heredar la pista previa
+    this.updateMediaSessionMetadata(track);
+    this.resetMediaSessionPosition(track);
 
     let streamUrl = track.audioUrl || track.streamUrl;
     const targetUrl = track.urlYoutube || track.url;

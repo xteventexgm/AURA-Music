@@ -44,6 +44,7 @@ import { uiManager } from './ui.js';
 
 // Estado en memoria
 let busquedasRecientes = [];
+let ultimosResultadosBusqueda = [];
 let carModeManager = null;
 let visualizer = null;
 let currentPlaylistViewName = null;
@@ -122,27 +123,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
     onLoading: (track) => {
       const title = track.titulo || track.title || 'Música';
-      const barTitle = document.getElementById('playerBarTitle');
-      if (barTitle) {
-        barTitle.innerText = title;
-        applyTitleMarquee(barTitle);
-      }
+      updateMarqueeTitle('playerBarTitleTrack', title, 'playerBarTitle', 'player-bar-title');
+      updateMarqueeTitle('fsTrackTitleTrack', title, 'fsTrackTitle', 'fs-track-title');
+      updateMarqueeTitle('miniTitleTrack', title, 'miniTitle', 'mini-title');
+
       const barArtist = document.getElementById('playerBarArtist');
       if (barArtist) barArtist.innerText = `Conectando audio online... ⏳`;
 
-      const fsTitle = document.getElementById('fsTrackTitle');
-      if (fsTitle) {
-        fsTitle.innerText = title;
-        applyTitleMarquee(fsTitle);
-      }
       const fsArtist = document.getElementById('fsTrackArtist');
       if (fsArtist) fsArtist.innerText = `Conectando con AURA Stream... ☁️`;
 
-      const miniTitle = document.getElementById('miniTitle');
-      if (miniTitle) {
-        miniTitle.innerText = title;
-        applyTitleMarquee(miniTitle);
-      }
       const miniArtist = document.getElementById('miniArtist');
       if (miniArtist) miniArtist.innerText = `Conectando... ⏳`;
 
@@ -186,9 +176,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Recalcular desplazamiento animado del título si la ventana cambia de tamaño
   window.addEventListener('resize', () => {
-    applyTitleMarquee(document.getElementById('playerBarTitle'));
-    applyTitleMarquee(document.getElementById('fsTrackTitle'));
-    applyTitleMarquee(document.getElementById('miniTitle'));
+    const cur = queueManager.getCurrentTrack();
+    if (cur) {
+      const t = cur.titulo || cur.title || 'Música';
+      updateMarqueeTitle('playerBarTitleTrack', t, 'playerBarTitle', 'player-bar-title');
+      updateMarqueeTitle('fsTrackTitleTrack', t, 'fsTrackTitle', 'fs-track-title');
+      updateMarqueeTitle('miniTitleTrack', t, 'miniTitle', 'mini-title');
+    }
   });
 
   console.log('✅ [AURA] Listo y operativo.');
@@ -295,55 +289,8 @@ async function executeSearch(query) {
 
   try {
     const results = await buscarMusica(query);
-    uiManager.renderSearchResults(results, {
-      onPlay: (track, allResults, index) => {
-        // Establecer la cola con los resultados de la búsqueda
-        queueManager.setQueue(allResults, index);
-        playCurrentTrack();
-      },
-      onToggleFav: (track, favBtn) => {
-        const isFav = playlistManager.toggleFavorite(track);
-        favBtn.classList.toggle('is-fav', isFav);
-        favBtn.innerHTML = `<i class="${isFav ? 'ph-fill ph-heart' : 'ph-bold ph-heart'}"></i>`;
-        uiManager.showToast(isFav ? `❤️ Añadida a Favoritas` : `💔 Eliminada de Favoritas`);
-        updateFsFavButton();
-      },
-      onAddToPlaylist: (track) => {
-        uiManager.openAddToPlaylistModal(track, playlistManager.getPlaylists(), (plName, song, itemEl) => {
-          const res = playlistManager.addTrack(plName, song);
-          if (res.success) {
-            uiManager.showToast(`Guardada en "${plName}" ✨`);
-            if (itemEl) {
-              itemEl.classList.add('already-added');
-              const actionEl = itemEl.querySelector('.playlist-picker-action');
-              if (actionEl) {
-                actionEl.innerHTML = '<span class="picker-badge-added"><i class="ph-fill ph-check-circle"></i> Añadida</span>';
-              }
-              const countEl = itemEl.querySelector('.playlist-picker-count');
-              if (countEl) {
-                const count = playlistManager.getTracks(plName).length;
-                countEl.innerText = `${count} canción${count === 1 ? '' : 'es'}`;
-              }
-            }
-            uiManager.renderPlaylists(playlistManager.getPlaylists(), (n, t) => openPlaylistDetail(n, t));
-          } else {
-            uiManager.showToast(res.message);
-          }
-        });
-      },
-      onShareQr: (track) => {
-        openQrModal(track);
-      },
-      onDownload: (track) => {
-        downloadSingleTrack(track);
-      },
-      onDeleteDownload: (track) => {
-        deleteDownloadedTrack(track);
-      },
-      onOpenSongMenu: (track, index, options) => {
-        openSongMenuSheet(track, options);
-      }
-    });
+    ultimosResultadosBusqueda = results || [];
+    renderActiveSearchResults(ultimosResultadosBusqueda);
   } catch (err) {
     console.error(err);
     if (list) {
@@ -354,6 +301,59 @@ async function executeSearch(query) {
       `;
     }
   }
+}
+
+function renderActiveSearchResults(results) {
+  if (!results || results.length === 0) return;
+  uiManager.renderSearchResults(results, {
+    onPlay: (track, allResults, index) => {
+      // Establecer la cola con los resultados de la búsqueda
+      queueManager.setQueue(allResults, index);
+      playCurrentTrack();
+    },
+    onToggleFav: (track, favBtn) => {
+      const isFav = playlistManager.toggleFavorite(track);
+      favBtn.classList.toggle('is-fav', isFav);
+      favBtn.innerHTML = `<i class="${isFav ? 'ph-fill ph-heart' : 'ph-bold ph-heart'}"></i>`;
+      uiManager.showToast(isFav ? `❤️ Añadida a Favoritas` : `💔 Eliminada de Favoritas`);
+      updateFsFavButton();
+    },
+    onAddToPlaylist: (track) => {
+      uiManager.openAddToPlaylistModal(track, playlistManager.getPlaylists(), (plName, song, itemEl) => {
+        const res = playlistManager.addTrack(plName, song);
+        if (res.success) {
+          uiManager.showToast(`Guardada en "${plName}" ✨`);
+          if (itemEl) {
+            itemEl.classList.add('already-added');
+            const actionEl = itemEl.querySelector('.playlist-picker-action');
+            if (actionEl) {
+              actionEl.innerHTML = '<span class="picker-badge-added"><i class="ph-fill ph-check-circle"></i> Añadida</span>';
+            }
+            const countEl = itemEl.querySelector('.playlist-picker-count');
+            if (countEl) {
+              const count = playlistManager.getTracks(plName).length;
+              countEl.innerText = `${count} canción${count === 1 ? '' : 'es'}`;
+            }
+          }
+          uiManager.renderPlaylists(playlistManager.getPlaylists(), (n, t) => openPlaylistDetail(n, t));
+        } else {
+          uiManager.showToast(res.message);
+        }
+      });
+    },
+    onShareQr: (track) => {
+      openQrModal(track);
+    },
+    onDownload: (track) => {
+      downloadSingleTrack(track);
+    },
+    onDeleteDownload: (track) => {
+      deleteDownloadedTrack(track);
+    },
+    onOpenSongMenu: (track, index, options) => {
+      openSongMenuSheet(track, options);
+    }
+  });
 }
 
 /* ======================================================
@@ -576,33 +576,21 @@ function syncTrackMetadataUI(track) {
   }
 
   // Barra flotante
-  const barTitle = document.getElementById('playerBarTitle');
-  if (barTitle) {
-    barTitle.innerText = title;
-    applyTitleMarquee(barTitle);
-  }
+  updateMarqueeTitle('playerBarTitleTrack', title, 'playerBarTitle', 'player-bar-title');
   const barArtist = document.getElementById('playerBarArtist');
   if (barArtist) barArtist.innerText = artist;
   const barThumb = document.getElementById('playerBarThumb');
   if (barThumb) barThumb.src = thumb;
 
   // Fullscreen
-  const fsTitle = document.getElementById('fsTrackTitle');
-  if (fsTitle) {
-    fsTitle.innerText = title;
-    applyTitleMarquee(fsTitle);
-  }
+  updateMarqueeTitle('fsTrackTitleTrack', title, 'fsTrackTitle', 'fs-track-title');
   const fsArtist = document.getElementById('fsTrackArtist');
   if (fsArtist) fsArtist.innerText = artist;
   const fsVinyl = document.getElementById('fsVinylImg');
   if (fsVinyl) fsVinyl.src = thumb;
 
   // Mini-Player Flotante (Widget PiP)
-  const miniTitle = document.getElementById('miniTitle');
-  if (miniTitle) {
-    miniTitle.innerText = title;
-    applyTitleMarquee(miniTitle);
-  }
+  updateMarqueeTitle('miniTitleTrack', title, 'miniTitle', 'mini-title');
   const miniArtist = document.getElementById('miniArtist');
   if (miniArtist) miniArtist.innerText = artist;
   const miniCover = document.getElementById('miniCover');
@@ -616,34 +604,31 @@ function syncTrackMetadataUI(track) {
 
 const activeMarqueeAnims = new WeakMap();
 
-function applyTitleMarquee(element) {
-  if (!element) return;
-  const trackEl = element.closest('.marquee-track') || element;
+function updateMarqueeTitle(trackContainerId, titleText, titleElId, cssClass = '') {
+  const trackEl = document.getElementById(trackContainerId);
+  if (!trackEl) return;
   const wrapperEl = trackEl.closest('.marquee-wrapper') || trackEl.parentElement;
   if (!wrapperEl) return;
 
-  // Cancelar animación previa si existía en esta pista
+  // Cancelar animación previa en este track si existía
   const prevAnim = activeMarqueeAnims.get(trackEl);
   if (prevAnim) {
     try { prevAnim.cancel(); } catch (e) {}
     activeMarqueeAnims.delete(trackEl);
   }
 
-  // Obtener texto original limpio
-  const rawTitle = element.getAttribute('data-raw-title') || element.innerText || 'AURA Music';
-  element.setAttribute('data-raw-title', rawTitle);
-
-  // Reconstruir un único span inicial sin duplicados
-  trackEl.innerHTML = '';
-  const span1 = document.createElement('span');
-  span1.className = 'marquee-text';
-  span1.innerText = rawTitle;
-  trackEl.appendChild(span1);
   trackEl.style.transform = 'translateX(0px)';
+  trackEl.innerHTML = '';
 
-  // Medir tras renderizado en el DOM
+  // Conservar siempre el ID del elemento principal para que la UI nunca pierda la referencia
+  const mainTitle = document.createElement('span');
+  mainTitle.id = titleElId;
+  mainTitle.className = `marquee-text ${cssClass}`.trim();
+  mainTitle.innerText = titleText || 'AURA Music';
+  trackEl.appendChild(mainTitle);
+
   requestAnimationFrame(() => {
-    const textWidth = span1.offsetWidth;
+    const textWidth = mainTitle.offsetWidth;
     const containerWidth = wrapperEl.clientWidth;
 
     // Solo animar si el texto desborda el ancho visible
@@ -651,21 +636,21 @@ function applyTitleMarquee(element) {
       const spacer = document.createElement('span');
       spacer.className = 'marquee-spacer';
 
-      const span2 = document.createElement('span');
-      span2.className = 'marquee-text';
-      span2.innerText = rawTitle;
+      const cloneTitle = document.createElement('span');
+      cloneTitle.className = `marquee-text ${cssClass}`.trim();
+      cloneTitle.innerText = titleText || 'AURA Music';
 
       trackEl.appendChild(spacer);
-      trackEl.appendChild(span2);
+      trackEl.appendChild(cloneTitle);
 
       const loopDistance = textWidth + 48; // Distancia exacta del bucle (ancho + separación de 48px)
-      const scrollSpeedPxPerSec = 30; // Velocidad suave y placentera para leer
+      const scrollSpeedPxPerSec = 30; // Velocidad de lectura suave
       const scrollDurationMs = (loopDistance / scrollSpeedPxPerSec) * 1000;
-      const pauseDurationMs = 4500; // Pausa inicial de ~4.5 a 5 segundos en su posición
+      const pauseDurationMs = 4500; // Pausa inicial de 4.5 segundos en posición inicial
       const totalDurationMs = pauseDurationMs + scrollDurationMs;
       const pauseFraction = pauseDurationMs / totalDurationMs;
 
-      // Animación continua y secuencial sin hueco vacío
+      // Animación continua y secuencial: 4.5s de pausa inicial, scroll suave hacia la izquierda y bucle sin saltos
       const anim = trackEl.animate(
         [
           { transform: 'translateX(0px)', offset: 0 },
@@ -1754,6 +1739,11 @@ function refreshCurrentTrackListUI() {
     const updated = playlistManager.getTracks(currentPlaylistViewName);
     openPlaylistDetail(currentPlaylistViewName, updated);
   }
+  const searchView = document.getElementById('vista-busqueda');
+  if (searchView && searchView.classList.contains('view-active') && ultimosResultadosBusqueda && ultimosResultadosBusqueda.length > 0) {
+    renderActiveSearchResults(ultimosResultadosBusqueda);
+  }
+  renderQueueDrawer();
 }
 
 function initNetworkDetection() {

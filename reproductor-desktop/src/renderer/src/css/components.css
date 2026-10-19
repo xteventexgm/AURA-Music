@@ -274,6 +274,67 @@
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+}
+
+.song-title > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-led {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  min-width: 7px;
+  min-height: 7px;
+  border-radius: 50%;
+  background: var(--neon-emerald, #00f5a0);
+  box-shadow: 0 0 7px #00f5a0, 0 0 2px #fff;
+  margin-left: 6px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.download-tag {
+  color: var(--neon-emerald, #00f5a0);
+  font-size: 0.72rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.btn-header-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: rgba(0, 245, 160, 0.12);
+  border: 1px solid rgba(0, 245, 160, 0.3);
+  color: var(--neon-emerald, #00f5a0);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-header-download:hover:not(:disabled) {
+  background: rgba(0, 245, 160, 0.22);
+  border-color: var(--neon-emerald, #00f5a0);
+  box-shadow: 0 0 12px rgba(0, 245, 160, 0.4);
+}
+
+.btn-header-download.is-all-downloaded,
+.btn-header-download:disabled {
+  opacity: 0.65;
+  cursor: default;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
 }
 
 .song-item.is-playing .song-title {

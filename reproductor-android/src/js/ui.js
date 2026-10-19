@@ -114,8 +114,12 @@ export class UIManager {
             </div>
           </div>
           <div class="song-info">
-            <h4 class="song-title" title="${track.title}">${track.title}</h4>
+            <h4 class="song-title" title="${track.title}">
+              <span>${track.title}</span>
+              ${isDown ? '<span class="download-led" title="Descargada en el dispositivo (Offline)"></span>' : ''}
+            </h4>
             <div class="song-meta">
+              ${isDown ? '<span class="download-tag"><i class="ph-bold ph-check"></i> Guardada</span><span>•</span>' : ''}
               <span>${track.channel || 'YouTube'}</span>
               <span>•</span>
               <span><i class="ph ph-clock"></i> ${track.duration || '0:00'}</span>
@@ -278,12 +282,19 @@ export class UIManager {
 
       // Botón Descargar Playlist Completa (Desktop)
       if (callbacks.onDownloadPlaylist && tracks && tracks.length > 0) {
+        const allDownloaded = tracks.every((t) => isTrackDownloaded(t));
         const btnDownload = document.createElement('button');
-        btnDownload.className = 'btn-header-download';
+        btnDownload.className = `btn-header-download ${allDownloaded ? 'is-all-downloaded' : ''}`;
         btnDownload.id = 'btnDownloadEntirePlaylist';
-        btnDownload.title = 'Descargar toda la playlist';
-        btnDownload.innerHTML = '<i class="ph-bold ph-download-simple"></i> <span>Descargar</span>';
-        btnDownload.addEventListener('click', () => callbacks.onDownloadPlaylist(title, tracks, btnDownload));
+        if (allDownloaded) {
+          btnDownload.disabled = true;
+          btnDownload.title = 'Todas las canciones de esta playlist ya están descargadas';
+          btnDownload.innerHTML = '<i class="ph-bold ph-check-circle" style="color: var(--neon-emerald);"></i> <span>Descargada</span>';
+        } else {
+          btnDownload.title = 'Descargar toda la playlist';
+          btnDownload.innerHTML = '<i class="ph-bold ph-download-simple"></i> <span>Descargar</span>';
+          btnDownload.addEventListener('click', () => callbacks.onDownloadPlaylist(title, tracks, btnDownload));
+        }
         desktopActions.appendChild(btnDownload);
       }
 
@@ -340,8 +351,12 @@ export class UIManager {
               </div>
             </div>
             <div class="song-info">
-              <h4 class="song-title">${track.titulo || track.title}</h4>
+              <h4 class="song-title" title="${track.titulo || track.title}">
+                <span>${track.titulo || track.title}</span>
+                ${isDown ? '<span class="download-led" title="Descargada en el dispositivo (Offline)"></span>' : ''}
+              </h4>
               <div class="song-meta">
+                ${isDown ? '<span class="download-tag"><i class="ph-bold ph-check"></i> Guardada</span><span>•</span>' : ''}
                 <span>${track.duracion || '0:00'}</span>
               </div>
             </div>
@@ -437,7 +452,10 @@ export class UIManager {
             <img src="${thumb}" alt="Thumb" class="song-thumb" />
           </div>
           <div class="song-info">
-            <h4 class="song-title">${index + 1}. ${track.titulo || track.title}</h4>
+            <h4 class="song-title">
+              <span>${index + 1}. ${track.titulo || track.title}</span>
+              ${isTrackDownloaded(track) ? '<span class="download-led" title="Descargada (Offline)"></span>' : ''}
+            </h4>
             <span class="song-meta">${track.duracion || track.duration || '0:00'}</span>
           </div>
         </div>
@@ -704,22 +722,42 @@ export class UIManager {
     if (titleEl) titleEl.innerText = playlistName === '__todas__' ? 'Todas las Canciones' : playlistName;
     if (countEl) countEl.innerText = `${(tracks || []).length} canciones`;
 
-    // Descargar todas
+    // Descargar todas (Deshabilitado si ya están todas descargadas)
+    const hasTracks = tracks && tracks.length > 0;
+    const allDownloaded = hasTracks && tracks.every((t) => isTrackDownloaded(t));
+    const anyDownloaded = hasTracks && tracks.some((t) => isTrackDownloaded(t));
+
     const btnDownloadAll = document.getElementById('btnPlActionDownloadAll');
     if (btnDownloadAll) {
-      btnDownloadAll.onclick = () => {
-        modal.classList.remove('open');
-        if (callbacks.onDownloadPlaylist) callbacks.onDownloadPlaylist(playlistName, tracks);
-      };
+      if (allDownloaded) {
+        btnDownloadAll.classList.add('disabled');
+        btnDownloadAll.style.opacity = '0.55';
+        btnDownloadAll.style.pointerEvents = 'none';
+        btnDownloadAll.innerHTML = '<i class="ph-bold ph-check-circle" style="color: var(--neon-emerald);"></i> <span>Todas descargadas ✓</span>';
+      } else {
+        btnDownloadAll.classList.remove('disabled');
+        btnDownloadAll.style.opacity = '1';
+        btnDownloadAll.style.pointerEvents = 'auto';
+        btnDownloadAll.innerHTML = '<i class="ph-bold ph-download-simple"></i> <span>Descargar todas las canciones</span>';
+        btnDownloadAll.onclick = () => {
+          modal.classList.remove('open');
+          if (callbacks.onDownloadPlaylist) callbacks.onDownloadPlaylist(playlistName, tracks);
+        };
+      }
     }
 
-    // Eliminar canciones descargadas
+    // Eliminar canciones descargadas (Ocultar si no hay ninguna descargada)
     const btnDeleteDownloads = document.getElementById('btnPlActionDeleteDownloads');
     if (btnDeleteDownloads) {
-      btnDeleteDownloads.onclick = () => {
-        modal.classList.remove('open');
-        if (callbacks.onDeleteDownloadedTracks) callbacks.onDeleteDownloadedTracks(tracks, playlistName);
-      };
+      if (!anyDownloaded) {
+        btnDeleteDownloads.style.display = 'none';
+      } else {
+        btnDeleteDownloads.style.display = 'flex';
+        btnDeleteDownloads.onclick = () => {
+          modal.classList.remove('open');
+          if (callbacks.onDeleteDownloadedTracks) callbacks.onDeleteDownloadedTracks(tracks, playlistName);
+        };
+      }
     }
 
     // Compartir QR

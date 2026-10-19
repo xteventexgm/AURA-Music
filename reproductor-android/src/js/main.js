@@ -47,6 +47,7 @@ import { obtenerEnlaceAudio } from './api.js';
 
 // Estado en memoria
 let busquedasRecientes = [];
+let ultimosResultadosBusqueda = [];
 let carModeManager = null;
 let visualizer = null;
 let currentPlaylistViewName = null;
@@ -126,19 +127,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
     onLoading: (track) => {
       const title = track.titulo || track.title || 'Música';
-      const barTitle = document.getElementById('playerBarTitle');
-      if (barTitle) {
-        barTitle.innerText = title;
-        applyTitleMarquee(barTitle);
-      }
+      updateMarqueeTitle('playerBarTitleTrack', title, 'playerBarTitle', 'player-bar-title');
+      updateMarqueeTitle('fsTrackTitleTrack', title, 'fsTrackTitle', 'fs-track-title');
+
       const barArtist = document.getElementById('playerBarArtist');
       if (barArtist) barArtist.innerText = `Conectando audio online... ⏳`;
 
-      const fsTitle = document.getElementById('fsTrackTitle');
-      if (fsTitle) {
-        fsTitle.innerText = title;
-        applyTitleMarquee(fsTitle);
-      }
       const fsArtist = document.getElementById('fsTrackArtist');
       if (fsArtist) fsArtist.innerText = `Conectando con AURA Stream... ☁️`;
 
@@ -185,8 +179,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Recalcular desplazamiento animado del título si la pantalla rota o cambia de tamaño
   window.addEventListener('resize', () => {
-    applyTitleMarquee(document.getElementById('playerBarTitle'));
-    applyTitleMarquee(document.getElementById('fsTrackTitle'));
+    const cur = queueManager.getCurrentTrack();
+    if (cur) {
+      const t = cur.titulo || cur.title || 'Música';
+      updateMarqueeTitle('playerBarTitleTrack', t, 'playerBarTitle', 'player-bar-title');
+      updateMarqueeTitle('fsTrackTitleTrack', t, 'fsTrackTitle', 'fs-track-title');
+    }
   });
 
   console.log('✅ [AURA] Listo y operativo.');
@@ -293,55 +291,8 @@ async function executeSearch(query) {
 
   try {
     const results = await buscarMusica(query);
-    uiManager.renderSearchResults(results, {
-      onPlay: (track, allResults, index) => {
-        // Establecer la cola con los resultados de la búsqueda
-        queueManager.setQueue(allResults, index);
-        playCurrentTrack();
-      },
-      onToggleFav: (track, favBtn) => {
-        const isFav = playlistManager.toggleFavorite(track);
-        favBtn.classList.toggle('is-fav', isFav);
-        favBtn.innerHTML = `<i class="${isFav ? 'ph-fill ph-heart' : 'ph-bold ph-heart'}"></i>`;
-        uiManager.showToast(isFav ? `❤️ Añadida a Favoritas` : `💔 Eliminada de Favoritas`);
-        updateFsFavButton();
-      },
-      onAddToPlaylist: (track) => {
-        uiManager.openAddToPlaylistModal(track, playlistManager.getPlaylists(), (plName, song, itemEl) => {
-          const res = playlistManager.addTrack(plName, song);
-          if (res.success) {
-            uiManager.showToast(`Guardada en "${plName}" ✨`);
-            if (itemEl) {
-              itemEl.classList.add('already-added');
-              const actionEl = itemEl.querySelector('.playlist-picker-action');
-              if (actionEl) {
-                actionEl.innerHTML = '<span class="picker-badge-added"><i class="ph-fill ph-check-circle"></i> Añadida</span>';
-              }
-              const countEl = itemEl.querySelector('.playlist-picker-count');
-              if (countEl) {
-                const count = playlistManager.getTracks(plName).length;
-                countEl.innerText = `${count} canción${count === 1 ? '' : 'es'}`;
-              }
-            }
-            uiManager.renderPlaylists(playlistManager.getPlaylists(), (n, t) => openPlaylistDetail(n, t));
-          } else {
-            uiManager.showToast(res.message);
-          }
-        });
-      },
-      onShareQr: (track) => {
-        openQrModal(track);
-      },
-      onDownload: (track) => {
-        downloadSingleTrack(track);
-      },
-      onDeleteDownload: (track) => {
-        deleteDownloadedTrack(track);
-      },
-      onOpenSongMenu: (track, index, options) => {
-        openSongMenuSheet(track, options);
-      }
-    });
+    ultimosResultadosBusqueda = results || [];
+    renderActiveSearchResults(ultimosResultadosBusqueda);
   } catch (err) {
     console.error(err);
     if (list) {
@@ -352,6 +303,58 @@ async function executeSearch(query) {
       `;
     }
   }
+}
+
+function renderActiveSearchResults(results) {
+  if (!results || results.length === 0) return;
+  uiManager.renderSearchResults(results, {
+    onPlay: (track, allResults, index) => {
+      queueManager.setQueue(allResults, index);
+      playCurrentTrack();
+    },
+    onToggleFav: (track, favBtn) => {
+      const isFav = playlistManager.toggleFavorite(track);
+      favBtn.classList.toggle('is-fav', isFav);
+      favBtn.innerHTML = `<i class="${isFav ? 'ph-fill ph-heart' : 'ph-bold ph-heart'}"></i>`;
+      uiManager.showToast(isFav ? `❤️ Añadida a Favoritas` : `💔 Eliminada de Favoritas`);
+      updateFsFavButton();
+    },
+    onAddToPlaylist: (track) => {
+      uiManager.openAddToPlaylistModal(track, playlistManager.getPlaylists(), (plName, song, itemEl) => {
+        const res = playlistManager.addTrack(plName, song);
+        if (res.success) {
+          uiManager.showToast(`Guardada en "${plName}" ✨`);
+          if (itemEl) {
+            itemEl.classList.add('already-added');
+            const actionEl = itemEl.querySelector('.playlist-picker-action');
+            if (actionEl) {
+              actionEl.innerHTML = '<span class="picker-badge-added"><i class="ph-fill ph-check-circle"></i> Añadida</span>';
+            }
+            const countEl = itemEl.querySelector('.playlist-picker-count');
+            if (countEl) {
+              const count = playlistManager.getTracks(plName).length;
+              countEl.innerText = `${count} canción${count === 1 ? '' : 'es'}`;
+            }
+          }
+          uiManager.renderPlaylists(playlistManager.getPlaylists(), (n, t) => openPlaylistDetail(n, t));
+        } else {
+          uiManager.showToast(res.message);
+        }
+      });
+    },
+    onShareQr: (track) => {
+      openQrModal(track);
+    },
+    onDownload: (track) => {
+      downloadSingleTrack(track);
+    },
+    onDeleteDownload: (track) => {
+      deleteDownloadedTrack(track);
+    },
+    onOpenSongMenu: (track, index, options) => {
+      openSongMenuSheet(track, options);
+    }
+  });
 }
 
 /* ======================================================
@@ -564,22 +567,14 @@ function syncTrackMetadataUI(track) {
   const thumb = track.thumbnail || '/icon.png';
 
   // Barra flotante
-  const barTitle = document.getElementById('playerBarTitle');
-  if (barTitle) {
-    barTitle.innerText = title;
-    applyTitleMarquee(barTitle);
-  }
+  updateMarqueeTitle('playerBarTitleTrack', title, 'playerBarTitle', 'player-bar-title');
   const barArtist = document.getElementById('playerBarArtist');
   if (barArtist) barArtist.innerText = artist;
   const barThumb = document.getElementById('playerBarThumb');
   if (barThumb) barThumb.src = thumb;
 
   // Fullscreen
-  const fsTitle = document.getElementById('fsTrackTitle');
-  if (fsTitle) {
-    fsTitle.innerText = title;
-    applyTitleMarquee(fsTitle);
-  }
+  updateMarqueeTitle('fsTrackTitleTrack', title, 'fsTrackTitle', 'fs-track-title');
   const fsArtist = document.getElementById('fsTrackArtist');
   if (fsArtist) fsArtist.innerText = artist;
   const fsVinyl = document.getElementById('fsVinylImg');
@@ -591,34 +586,31 @@ function syncTrackMetadataUI(track) {
 
 const activeMarqueeAnims = new WeakMap();
 
-function applyTitleMarquee(element) {
-  if (!element) return;
-  const trackEl = element.closest('.marquee-track') || element;
+function updateMarqueeTitle(trackContainerId, titleText, titleElId, cssClass = '') {
+  const trackEl = document.getElementById(trackContainerId);
+  if (!trackEl) return;
   const wrapperEl = trackEl.closest('.marquee-wrapper') || trackEl.parentElement;
   if (!wrapperEl) return;
 
-  // Cancelar animación previa si existía en esta pista
+  // Cancelar animación previa en este track si existía
   const prevAnim = activeMarqueeAnims.get(trackEl);
   if (prevAnim) {
     try { prevAnim.cancel(); } catch (e) {}
     activeMarqueeAnims.delete(trackEl);
   }
 
-  // Obtener texto original limpio
-  const rawTitle = element.getAttribute('data-raw-title') || element.innerText || 'AURA Music';
-  element.setAttribute('data-raw-title', rawTitle);
-
-  // Reconstruir un único span inicial sin duplicados
-  trackEl.innerHTML = '';
-  const span1 = document.createElement('span');
-  span1.className = 'marquee-text';
-  span1.innerText = rawTitle;
-  trackEl.appendChild(span1);
   trackEl.style.transform = 'translateX(0px)';
+  trackEl.innerHTML = '';
 
-  // Medir tras renderizado en el DOM
+  // Conservar siempre el ID del elemento principal para que la UI nunca pierda la referencia
+  const mainTitle = document.createElement('span');
+  mainTitle.id = titleElId;
+  mainTitle.className = `marquee-text ${cssClass}`.trim();
+  mainTitle.innerText = titleText || 'AURA Music';
+  trackEl.appendChild(mainTitle);
+
   requestAnimationFrame(() => {
-    const textWidth = span1.offsetWidth;
+    const textWidth = mainTitle.offsetWidth;
     const containerWidth = wrapperEl.clientWidth;
 
     // Solo animar si el texto desborda el ancho visible
@@ -626,24 +618,21 @@ function applyTitleMarquee(element) {
       const spacer = document.createElement('span');
       spacer.className = 'marquee-spacer';
 
-      const span2 = document.createElement('span');
-      span2.className = 'marquee-text';
-      span2.innerText = rawTitle;
+      const cloneTitle = document.createElement('span');
+      cloneTitle.className = `marquee-text ${cssClass}`.trim();
+      cloneTitle.innerText = titleText || 'AURA Music';
 
       trackEl.appendChild(spacer);
-      trackEl.appendChild(span2);
+      trackEl.appendChild(cloneTitle);
 
       const loopDistance = textWidth + 48; // Distancia exacta del bucle (ancho + separación de 48px)
-      const scrollSpeedPxPerSec = 30; // Velocidad suave y placentera para leer
+      const scrollSpeedPxPerSec = 30; // Velocidad de lectura suave
       const scrollDurationMs = (loopDistance / scrollSpeedPxPerSec) * 1000;
-      const pauseDurationMs = 4500; // Pausa inicial de ~4.5 a 5 segundos en su posición
+      const pauseDurationMs = 4500; // Pausa inicial de 4.5 segundos en posición inicial
       const totalDurationMs = pauseDurationMs + scrollDurationMs;
       const pauseFraction = pauseDurationMs / totalDurationMs;
 
-      // Animación continua y secuencial:
-      // 0% a pauseFraction: se mantiene en posición 0 (pausa 4.5s)
-      // pauseFraction a 100%: se desplaza lentamente hacia la izquierda
-      // Al llegar a 100%, el duplicado está en posición 0 y el bucle se reinicia de forma idéntica sin salto
+      // Animación continua y secuencial: 4.5s de pausa inicial, scroll suave hacia la izquierda y bucle sin saltos
       const anim = trackEl.animate(
         [
           { transform: 'translateX(0px)', offset: 0 },
@@ -1082,10 +1071,33 @@ function openSongMenuSheet(track, options = {}) {
   });
 }
 
+async function ensureAuraDirectory() {
+  if (window.Capacitor?.isNativePlatform?.() || window.Capacitor) {
+    try {
+      await Filesystem.mkdir({
+        path: 'AURA',
+        directory: Directory.Data,
+        recursive: true
+      });
+    } catch (e) {
+      // Ignorar si el directorio ya existe
+    }
+  }
+}
+
+function getTrackStoragePath(track) {
+  const trackId = (track.id || track.videoId || track.urlYoutube?.match(/[?&]v=([^&]+)/)?.[1] || '').trim();
+  const rawTitle = (track.titulo || track.title || 'audio')
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+    .trim();
+  const shortTitle = rawTitle.slice(0, 40).trim();
+  const fileBase = trackId ? `${trackId}_${shortTitle}` : (shortTitle || 'track');
+  return `AURA/${fileBase}.mp3`;
+}
+
 async function downloadSingleTrack(track) {
   if (!track) return;
   const rawTitle = track.titulo || track.title || 'Pista';
-  const safeTitle = rawTitle.replace(/[<>:"/\\|?*]/g, '').trim();
 
   if (isTrackDownloaded(track)) {
     uiManager.showToast(`"${rawTitle}" ya está descargada en tu dispositivo 💾`);
@@ -1101,8 +1113,9 @@ async function downloadSingleTrack(track) {
     const streamUrl = await obtenerEnlaceAudio(url);
     if (!streamUrl) throw new Error('No se pudo resolver el audio');
 
-    const fileName = `${safeTitle}.mp3`;
-    const relativePath = `AURA/${fileName}`;
+    await ensureAuraDirectory();
+    const relativePath = getTrackStoragePath(track);
+    const fileName = relativePath.replace(/^AURA\//, '');
     let localUrl = null;
 
     if (window.Capacitor?.isNativePlatform?.() || window.Capacitor) {
@@ -1204,6 +1217,26 @@ function refreshCurrentTrackListUI() {
     const updated = playlistManager.getTracks(currentPlaylistViewName);
     openPlaylistDetail(currentPlaylistViewName, updated);
   }
+  const searchView = document.getElementById('vista-busqueda');
+  if (searchView && searchView.classList.contains('view-active') && ultimosResultadosBusqueda && ultimosResultadosBusqueda.length > 0) {
+    renderActiveSearchResults(ultimosResultadosBusqueda);
+  }
+  const queue = queueManager.getQueue();
+  const currentIndex = queueManager.getCurrentIndex();
+  uiManager.renderQueueList(queue, currentIndex, {
+    onSelect: (idx) => {
+      queueManager.setCurrentIndex(idx);
+      playCurrentTrack();
+    },
+    onRemove: (idx) => {
+      queueManager.removeFromQueue(idx);
+      refreshCurrentTrackListUI();
+    },
+    onReorder: (from, to) => {
+      queueManager.moveTrack(from, to);
+      refreshCurrentTrackListUI();
+    }
+  });
 }
 
 /**
@@ -1219,19 +1252,25 @@ async function downloadEntirePlaylistAndroid(playlistName, tracks, btnEl) {
   if (btnEl) btnEl.disabled = true;
   uiManager.showToast(`Descargando ${tracks.length} canciones de "${playlistName}"... 🚀`);
 
+  await ensureAuraDirectory();
+
   let count = 0;
   for (let i = 0; i < tracks.length; i++) {
     const track = tracks[i];
+    if (isTrackDownloaded(track)) {
+      count++;
+      continue;
+    }
+
     if (btnEl) btnEl.innerHTML = `⏳ ${i + 1}/${tracks.length}`;
     const rawTitle = track.titulo || track.title || `Pista_${i + 1}`;
-    const safeTitle = rawTitle.replace(/[<>:"/\\|?*]/g, '').trim();
 
     try {
       const url = track.urlYoutube || track.url;
       if (url) {
         const streamUrl = await obtenerEnlaceAudio(url);
         if (streamUrl) {
-          const relativePath = `AURA/${safeTitle}.mp3`;
+          const relativePath = getTrackStoragePath(track);
           let localUrl = null;
 
           if (window.Capacitor?.isNativePlatform?.() || window.Capacitor) {
@@ -1256,7 +1295,7 @@ async function downloadEntirePlaylistAndroid(playlistName, tracks, btnEl) {
         }
       }
     } catch (err) {
-      console.warn(`[AURA Download] Falló "${safeTitle}":`, err.message);
+      console.warn(`[AURA Download] Falló "${rawTitle}":`, err.message);
     }
   }
 
