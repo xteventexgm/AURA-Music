@@ -116,7 +116,6 @@ export class UIManager {
           <div class="song-info">
             <h4 class="song-title" title="${track.title}">
               <span>${track.title}</span>
-              ${isDown ? '<span class="download-led" title="Descargada en el dispositivo (Offline)"></span>' : ''}
             </h4>
             <div class="song-meta">
               ${isDown ? '<span class="download-tag"><i class="ph-bold ph-check"></i> Guardada</span><span>•</span>' : ''}
@@ -125,6 +124,7 @@ export class UIManager {
               <span><i class="ph ph-clock"></i> ${track.duration || '0:00'}</span>
             </div>
           </div>
+          ${isDown ? '<span class="download-led" title="Descargada en el dispositivo (Offline)"></span>' : ''}
         </div>
         <div class="song-item-actions song-desktop-actions">
           <button class="btn-icon-subtle btn-fav ${isFav ? 'is-fav' : ''}" title="${isFav ? 'Quitar de Favoritas' : 'Marcar Favorita'}">
@@ -353,13 +353,13 @@ export class UIManager {
             <div class="song-info">
               <h4 class="song-title" title="${track.titulo || track.title}">
                 <span>${track.titulo || track.title}</span>
-                ${isDown ? '<span class="download-led" title="Descargada en el dispositivo (Offline)"></span>' : ''}
               </h4>
               <div class="song-meta">
                 ${isDown ? '<span class="download-tag"><i class="ph-bold ph-check"></i> Guardada</span><span>•</span>' : ''}
                 <span>${track.duracion || '0:00'}</span>
               </div>
             </div>
+            ${isDown ? '<span class="download-led" title="Descargada en el dispositivo (Offline)"></span>' : ''}
           </div>
           <div class="song-item-actions song-desktop-actions">
             <button class="btn-icon-subtle btn-play-track" title="Reproducir">
@@ -454,10 +454,10 @@ export class UIManager {
           <div class="song-info">
             <h4 class="song-title">
               <span>${index + 1}. ${track.titulo || track.title}</span>
-              ${isTrackDownloaded(track) ? '<span class="download-led" title="Descargada (Offline)"></span>' : ''}
             </h4>
             <span class="song-meta">${track.duracion || track.duration || '0:00'}</span>
           </div>
+          ${isTrackDownloaded(track) ? '<span class="download-led" title="Descargada (Offline)"></span>' : ''}
         </div>
         <div class="song-item-actions">
           <button class="btn-icon-subtle btn-del-queue" title="Quitar de la cola">
@@ -521,8 +521,9 @@ export class UIManager {
 
     this.pendingTrackForModal = track;
     this.modalPlaylistsCallback = onSelect;
-    const title = track.titulo || track.title || 'Canción sin título';
-    const artist = track.channel || 'AURA Streaming';
+    const title = track.titulo || track.title || 'Música';
+    const isOffline = isTrackDownloaded(track) || track.tipo === 'offline';
+    const artist = track.channel || (isOffline ? 'AURA Offline 💾' : 'AURA Streaming');
     const thumb = track.thumbnail || '/icon.png';
 
     if (songTitleEl) songTitleEl.innerText = title;
@@ -603,11 +604,12 @@ export class UIManager {
     const modal = document.getElementById('modalSongActions');
     if (!modal || !track) return;
 
-    const title = track.titulo || track.title || 'Canción';
-    const artist = track.channel || 'AURA';
-    const thumb = track.thumbnail || '/icon.png';
     const isFav = playlistManager.isFavorite(track);
     const isDownloaded = isTrackDownloaded(track);
+    const isOffline = isDownloaded || track.tipo === 'offline';
+    const title = track.titulo || track.title || 'Canción';
+    const artist = track.channel || (isOffline ? 'AURA Offline 💾' : 'AURA');
+    const thumb = track.thumbnail || '/icon.png';
 
     const thumbEl = document.getElementById('songActionThumb');
     const titleEl = document.getElementById('songActionTitle');

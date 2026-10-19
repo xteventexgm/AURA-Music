@@ -4,7 +4,8 @@
 
 import { obtenerEnlaceAudio } from './api.js';
 import { MediaSession as CapMediaSession } from '@capgo/capacitor-media-session';
-import { getDownloadedTrackInfo } from './storage.js';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { isTrackDownloaded, getDownloadedTrackInfo } from './storage.js';
 
 class AudioEngine {
   constructor() {
@@ -125,8 +126,10 @@ class AudioEngine {
 
   updateMediaSessionMetadata(track) {
     if (!track) return;
+    const isOffline = isTrackDownloaded(track) || track.tipo === 'offline';
     const title = track.titulo || track.title || 'AURA Music';
-    const artist = track.channel || 'AURA Mobile';
+    const artist = track.channel || (isOffline ? 'AURA Offline' : 'AURA Mobile');
+    const album = isOffline ? 'AURA Offline' : 'AURA Music';
     const artworkSrc = track.thumbnail || '/icon.png';
 
     if ('mediaSession' in navigator) {
@@ -134,7 +137,7 @@ class AudioEngine {
         navigator.mediaSession.metadata = new MediaMetadata({
           title,
           artist,
-          album: 'AURA Music',
+          album,
           artwork: [
             { src: artworkSrc, sizes: '96x96', type: 'image/jpeg' },
             { src: artworkSrc, sizes: '128x128', type: 'image/jpeg' },
@@ -153,7 +156,7 @@ class AudioEngine {
         CapMediaSession.setMetadata({
           title,
           artist,
-          album: 'AURA Music',
+          album,
           artwork: [
             {
               src: artworkSrc,
@@ -257,7 +260,29 @@ class AudioEngine {
 
     // 1. Si la pista está descargada localmente, reproducir de inmediato sin gastar datos ni requerir internet
     const downloaded = getDownloadedTrackInfo(track);
-    let streamUrl = (downloaded && (downloaded.localUrl || downloaded.path)) || track.audioUrl || track.streamUrl;
+    let streamUrl = null;
+    if (downloaded) {
+      if (downloaded.localUrl && !downloaded.localUrl.startsWith('AURA/')) {
+        streamUrl = downloaded.localUrl;
+        if (typeof streamUrl === 'string' && streamUrl.startsWith('file://') && window.Capacitor?.convertFileSrc) {
+          streamUrl = window.Capacitor.convertFileSrc(streamUrl);
+        }
+      } else if (downloaded.path) {
+        try {
+          const uriRes = await Filesystem.getUri({
+            directory: Directory.Data,
+            path: downloaded.path
+          });
+          streamUrl = window.Capacitor?.convertFileSrc ? window.Capacitor.convertFileSrc(uriRes.uri) : uriRes.uri;
+        } catch (e) {
+          console.warn('[AudioEngine] Error resolviendo URI de archivo descargado:', e);
+          streamUrl = downloaded.localUrl || downloaded.path;
+        }
+      }
+    }
+    if (!streamUrl && (track.audioUrl || track.streamUrl)) {
+      streamUrl = track.audioUrl || track.streamUrl;
+    }
     const targetUrl = track.urlYoutube || track.url;
 
     if (!streamUrl && targetUrl) {
@@ -283,20 +308,28 @@ class AudioEngine {
     }
 
     try {
+      const isOfflineTrack = !!downloaded || isTrackDownloaded(track) || track.tipo === 'offline';
+      if (isOfflineTrack) {
+        this.audio.removeAttribute('crossorigin');
+      } else {
+        this.audio.crossOrigin = 'anonymous';
+      }
+
       this.audio.src = streamUrl;
       this.updateMediaSessionMetadata(track);
       await this.audio.play();
       this.isLoading = false;
       return true;
     } catch (err) {
-      // Si la URL en caché falló (token expirado tras recargar la página), reintentar resolviendo un enlace fresco
-      if (targetUrl) {
+      // Si era una pista descargada y falló con el reproductor local, solo intentar enlace online si hay internet
+      if (targetUrl && (!downloaded || navigator.onLine)) {
         console.warn('[AudioEngine] URL en caché falló, solicitando enlace fresco...');
         try {
           track.audioUrl = null;
           track.streamUrl = null;
           streamUrl = await obtenerEnlaceAudio(targetUrl);
           track.audioUrl = streamUrl;
+          this.audio.crossOrigin = 'anonymous';
           this.audio.src = streamUrl;
           this.updateMediaSessionMetadata(track);
           await this.audio.play();

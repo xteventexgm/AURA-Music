@@ -127,16 +127,33 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateMarqueeTitle('fsTrackTitleTrack', title, 'fsTrackTitle', 'fs-track-title');
       updateMarqueeTitle('miniTitleTrack', title, 'miniTitle', 'mini-title');
 
+      const isOffline = isTrackDownloaded(track) || track.tipo === 'offline';
+
       const barArtist = document.getElementById('playerBarArtist');
-      if (barArtist) barArtist.innerText = `Conectando audio online... ⏳`;
+      if (barArtist) {
+        barArtist.innerText = isOffline
+          ? (track.channel ? `${track.channel} • Offline 💾` : 'Audio Local (Offline) 💾')
+          : `Conectando audio online... ⏳`;
+      }
 
       const fsArtist = document.getElementById('fsTrackArtist');
-      if (fsArtist) fsArtist.innerText = `Conectando con AURA Stream... ☁️`;
+      if (fsArtist) {
+        fsArtist.innerText = isOffline
+          ? (track.channel ? `${track.channel} • Offline 💾` : 'AURA Offline 💾')
+          : `Conectando con AURA Stream... ☁️`;
+      }
 
       const miniArtist = document.getElementById('miniArtist');
-      if (miniArtist) miniArtist.innerText = `Conectando... ⏳`;
+      if (miniArtist) {
+        miniArtist.innerText = isOffline
+          ? (track.channel || 'Offline 💾')
+          : `Conectando... ⏳`;
+      }
 
-      uiManager.showToast(`Conectando audio online... ☁️`);
+      // Si la pista está descargada, no mostrar aviso de conexión online
+      if (!isOffline) {
+        uiManager.showToast(`Conectando audio online... ☁️`);
+      }
     },
     onNext: () => playNextTrack(false),
     onPrev: () => playPrevTrack()
@@ -564,8 +581,9 @@ function toggleShuffle() {
 
 function syncTrackMetadataUI(track) {
   if (!track) return;
+  const isOffline = isTrackDownloaded(track) || track.tipo === 'offline';
   const title = track.titulo || track.title || 'Música';
-  const artist = track.channel || 'AURA Streaming';
+  const artist = track.channel || (isOffline ? 'AURA Offline 💾' : 'AURA Streaming');
   const thumb = track.thumbnail || '/icon.png';
 
   // Barra de Título Cyberpunk (Electron)
@@ -578,21 +596,30 @@ function syncTrackMetadataUI(track) {
   // Barra flotante
   updateMarqueeTitle('playerBarTitleTrack', title, 'playerBarTitle', 'player-bar-title');
   const barArtist = document.getElementById('playerBarArtist');
-  if (barArtist) barArtist.innerText = artist;
+  if (barArtist) {
+    barArtist.innerText = artist;
+    barArtist.style.color = isOffline ? 'var(--neon-emerald)' : '';
+  }
   const barThumb = document.getElementById('playerBarThumb');
   if (barThumb) barThumb.src = thumb;
 
   // Fullscreen
   updateMarqueeTitle('fsTrackTitleTrack', title, 'fsTrackTitle', 'fs-track-title');
   const fsArtist = document.getElementById('fsTrackArtist');
-  if (fsArtist) fsArtist.innerText = artist;
+  if (fsArtist) {
+    fsArtist.innerText = artist;
+    fsArtist.style.color = isOffline ? 'var(--neon-emerald)' : '';
+  }
   const fsVinyl = document.getElementById('fsVinylImg');
   if (fsVinyl) fsVinyl.src = thumb;
 
   // Mini-Player Flotante (Widget PiP)
   updateMarqueeTitle('miniTitleTrack', title, 'miniTitle', 'mini-title');
   const miniArtist = document.getElementById('miniArtist');
-  if (miniArtist) miniArtist.innerText = artist;
+  if (miniArtist) {
+    miniArtist.innerText = artist;
+    miniArtist.style.color = isOffline ? 'var(--neon-emerald)' : '';
+  }
   const miniCover = document.getElementById('miniCover');
   if (miniCover) miniCover.src = thumb;
 

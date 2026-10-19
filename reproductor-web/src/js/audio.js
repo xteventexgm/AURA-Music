@@ -3,7 +3,7 @@
  */
 
 import { obtenerEnlaceAudio } from './api.js';
-import { getDownloadedTrackInfo } from './storage.js';
+import { isTrackDownloaded, getDownloadedTrackInfo } from './storage.js';
 
 class AudioEngine {
   constructor() {
@@ -153,11 +153,12 @@ class AudioEngine {
     if (!('mediaSession' in navigator) || !track) return;
 
     try {
+      const isOffline = isTrackDownloaded(track) || track.tipo === 'offline';
       const artworkSrc = track.thumbnail || '/icon.png';
       navigator.mediaSession.metadata = new MediaMetadata({
         title: track.titulo || track.title || 'AURA Music',
-        artist: track.channel || 'AURA Streaming',
-        album: 'AURA Web Player',
+        artist: track.channel || (isOffline ? 'AURA Offline' : 'AURA Streaming'),
+        album: isOffline ? 'AURA Offline' : 'AURA Web Player',
         artwork: [
           { src: artworkSrc, sizes: '96x96', type: 'image/jpeg' },
           { src: artworkSrc, sizes: '128x128', type: 'image/jpeg' },
