@@ -11,7 +11,9 @@ reproductor-mvp/
 **/.cache/
 *.apk
 *.aab
+*.exe
 AURA-Music-Android.apk
+AURA-Music-Desktop-Setup.exe
 
 # Android & Gradle
 **/.gradle/
