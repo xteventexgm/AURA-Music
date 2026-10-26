@@ -139,6 +139,83 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// 3.1 Inicio de Sesión con Google (1-Clic)
+router.post('/google', async (req, res) => {
+  if (!isMongoConnected()) {
+    return res.status(503).json({
+      error: 'MongoDB Atlas no configurado',
+      message: 'Configura la variable MONGODB_URI en server/.env para autenticar con Google.'
+    });
+  }
+
+  try {
+    const { credential, profile } = req.body;
+    let googleData = null;
+
+    if (credential) {
+      const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+      if (verifyRes.ok) {
+        const info = await verifyRes.json();
+        if (info.email_verified === 'true' || info.email_verified === true) {
+          googleData = {
+            sub: info.sub,
+            email: info.email,
+            name: info.name || info.given_name || info.email.split('@')[0],
+            picture: info.picture || ''
+          };
+        }
+      }
+    }
+
+    if (!googleData && profile && profile.email) {
+      googleData = {
+        sub: profile.sub || profile.id,
+        email: profile.email,
+        name: profile.name || profile.username || profile.email.split('@')[0],
+        picture: profile.picture || profile.avatarUrl || ''
+      };
+    }
+
+    if (!googleData || !googleData.email) {
+      return res.status(400).json({ error: 'Token o credencial de Google no válido' });
+    }
+
+    const emailNorm = googleData.email.toLowerCase().trim();
+    let user = await User.findOne({
+      $or: [{ googleId: googleData.sub }, { email: emailNorm }]
+    });
+
+    if (user) {
+      if (!user.googleId && googleData.sub) {
+        user.googleId = googleData.sub;
+      }
+      if (!user.avatarUrl && googleData.picture) {
+        user.avatarUrl = googleData.picture;
+      }
+      await user.save();
+    } else {
+      user = new User({
+        username: (googleData.name || 'Usuario').trim().slice(0, 30),
+        email: emailNorm,
+        googleId: googleData.sub,
+        avatarUrl: googleData.picture
+      });
+      await user.save();
+    }
+
+    const token = generateToken(user);
+
+    res.json({
+      message: 'Autenticación con Google exitosa',
+      token,
+      user: user.toSafeObject()
+    });
+  } catch (err) {
+    console.error('[Google Auth Error]:', err);
+    res.status(500).json({ error: 'Fallo al autenticar con Google', details: err.message });
+  }
+});
+
 // 4. Obtener Perfil Actual
 router.get('/me', requireAuth, async (req, res) => {
   res.json({

@@ -38,6 +38,40 @@ function cleanTitleAndArtist(rawTitle, rawUploader) {
   return { title, artist };
 }
 
+export function classifyTrackAsMusic({ title, originalTitle, artist, durationSec, categories }) {
+  const t = (originalTitle || title || '').toLowerCase();
+  const a = (artist || '').toLowerCase();
+  const dur = Number(durationSec) || 0;
+
+  // 1. Descartar extremos de duración (menos de 45s es meme/short, más de 20 min es podcast/gameplay)
+  if (dur > 0 && (dur < 45 || dur > 1200)) {
+    return { isMusic: false, reason: dur < 45 ? 'Demasiado corto (<45s)' : 'Demasiado largo (>20m)' };
+  }
+
+  // 2. Anti-patrones explícitos en el título (no música)
+  const antiPatterns = /\b(gameplay|walkthrough|tutorial|unboxing|podcast|episode|episodio|vlog|noticias|news|reacción|reaction|review|highlights|directo|resumen|parche|patch|guía|guide|clase|conferencia)\b/i;
+  if (antiPatterns.test(t)) {
+    return { isMusic: false, reason: 'Contenido no musical detectado' };
+  }
+
+  // 3. Indicadores claros de música en canal o título
+  const isOfficialTopic = a.endsWith('- topic') || a.endsWith('topic');
+  const hasMusicKeywords = /\b(official video|official audio|lyrics|letra|remix|feat\.|ft\.|prod\.|visualizer|music video|videoclip|canción|soundtrack|ost)\b/i.test(t);
+  const isMusicChannel = /\b(vevo|records|music|discográfica|audio|sound)\b/i.test(a);
+  const isMusicCategory = Array.isArray(categories) && categories.some((c) => /music|música/i.test(c));
+
+  if (isOfficialTopic || hasMusicKeywords || isMusicChannel || isMusicCategory) {
+    return { isMusic: true, reason: 'Identificado como música' };
+  }
+
+  // Por defecto si la duración es típica de una canción (entre 1m y 7m)
+  if (dur >= 60 && dur <= 420) {
+    return { isMusic: true, reason: 'Duración estándar de pista' };
+  }
+
+  return { isMusic: true, reason: 'Aceptado' };
+}
+
 function isValidYouTubeInput(input) {
   if (!input || typeof input !== 'string') return false;
   const trimmed = input.trim();
@@ -92,6 +126,13 @@ export async function importFromUrl(rawUrl) {
           const videoId = entry.id;
           const { title, artist } = cleanTitleAndArtist(entry.title, entry.uploader);
           const durationSec = entry.duration || 0;
+          const classification = classifyTrackAsMusic({
+            title,
+            originalTitle: entry.title,
+            artist,
+            durationSec,
+            categories: entry.categories
+          });
 
           return {
             id: videoId,
@@ -100,6 +141,8 @@ export async function importFromUrl(rawUrl) {
             artist: artist || 'Desconocido',
             duration: formatSeconds(durationSec),
             seconds: durationSec,
+            isMusic: classification.isMusic,
+            filterReason: classification.reason,
             thumbnail:
               entry.thumbnails?.[0]?.url ||
               `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
@@ -107,10 +150,14 @@ export async function importFromUrl(rawUrl) {
           };
         });
 
+      const musicTracks = tracks.filter((t) => t.isMusic);
+
       return {
         type: 'playlist',
         title: plData.title || 'Playlist Importada',
         trackCount: tracks.length,
+        musicCount: musicTracks.length,
+        filteredCount: tracks.length - musicTracks.length,
         tracks
       };
     } catch (err) {

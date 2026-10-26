@@ -1,0 +1,15 @@
+{
+  "name": "aura-music-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AURA Music Player - Monorepo Workspace (Server, Web, Desktop, Android)",
+  "scripts": {
+    "dev": "npm --prefix server run dev",
+    "dev:server": "npm --prefix server run dev",
+    "dev:web": "npm --prefix reproductor-web run dev",
+    "dev:desktop": "npm --prefix reproductor-desktop run dev",
+    "build:web": "npm --prefix reproductor-web run build",
+    "build:desktop": "npm --prefix reproductor-desktop run build:win",
+    "build:android": "npm --prefix reproductor-android run build"
+  }
+}

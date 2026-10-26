@@ -8,6 +8,7 @@
 @import './components.css';
 @import './player.css';
 @import './car-mode.css';
+@import './account.css';
 
 /* Utility Classes */
 .hidden {

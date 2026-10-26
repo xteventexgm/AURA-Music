@@ -820,6 +820,374 @@ export class UIManager {
   closeModal(modalElement) {
     if (modalElement) modalElement.classList.remove('open');
   }
+
+  updateUserAccountBadge(user, isLoggedIn) {
+    const nameEl = document.getElementById('headerUserName');
+    const avatarEl = document.getElementById('headerUserAvatar');
+    const iconEl = document.getElementById('headerUserIcon');
+    const dotEl = document.getElementById('userCloudStatusDot');
+
+    // Header Badge
+    if (isLoggedIn && user) {
+      const displayName = user.username || user.name || 'Usuario';
+      if (nameEl) nameEl.textContent = displayName;
+      if (dotEl) {
+        dotEl.classList.remove('offline');
+        dotEl.classList.add('online');
+        dotEl.title = 'Sincronizado con AURA Cloud (Atlas)';
+      }
+      const avatarUrl = user.avatarUrl || user.picture;
+      if (avatarUrl && avatarEl && iconEl) {
+        avatarEl.src = avatarUrl;
+        avatarEl.style.display = 'block';
+        iconEl.style.display = 'none';
+      } else if (avatarEl && iconEl) {
+        avatarEl.style.display = 'none';
+        iconEl.style.display = 'inline-block';
+      }
+    } else {
+      if (nameEl) nameEl.textContent = 'Acceder';
+      if (dotEl) {
+        dotEl.classList.remove('online');
+        dotEl.classList.add('offline');
+        dotEl.title = 'Sin sincronizar';
+      }
+      if (avatarEl) avatarEl.style.display = 'none';
+      if (iconEl) iconEl.style.display = 'inline-block';
+    }
+
+    // Settings Profile Card
+    const sNameEl = document.getElementById('settingsUserName');
+    const sEmailEl = document.getElementById('settingsUserEmail');
+    const sAvatarEl = document.getElementById('settingsUserAvatar');
+    const sIconEl = document.getElementById('settingsUserIcon');
+
+    if (sNameEl && sEmailEl) {
+      if (isLoggedIn && user) {
+        sNameEl.textContent = user.username || user.name || 'Usuario AURA';
+        sEmailEl.textContent = user.email || 'Conectado a la nube';
+        const avatarUrl = user.avatarUrl || user.picture;
+        if (avatarUrl && sAvatarEl && sIconEl) {
+          sAvatarEl.src = avatarUrl;
+          sAvatarEl.style.display = 'block';
+          sIconEl.style.display = 'none';
+        } else if (sAvatarEl && sIconEl) {
+          sAvatarEl.style.display = 'none';
+          sIconEl.style.display = 'inline-block';
+        }
+      } else {
+        sNameEl.textContent = 'Invitado AURA';
+        sEmailEl.textContent = 'Sin conexión a la nube';
+        if (sAvatarEl) sAvatarEl.style.display = 'none';
+        if (sIconEl) sIconEl.style.display = 'inline-block';
+      }
+    }
+
+    // Account Modal View Switching
+    const guestView = document.getElementById('authGuestView');
+    const profileView = document.getElementById('authProfileView');
+    const pNameEl = document.getElementById('profileCloudName');
+    const pEmailEl = document.getElementById('profileCloudEmail');
+    const pAvatarEl = document.getElementById('profileCloudAvatar');
+    const pFallbackEl = document.getElementById('profileCloudFallback');
+    const pGoogleBadge = document.getElementById('badgeGoogleLinked');
+
+    if (guestView && profileView) {
+      if (isLoggedIn && user) {
+        guestView.style.display = 'none';
+        profileView.style.display = 'block';
+
+        if (pNameEl) pNameEl.textContent = user.username || user.name || 'Usuario AURA';
+        if (pEmailEl) pEmailEl.textContent = user.email || '';
+
+        const avatarUrl = user.avatarUrl || user.picture;
+        if (avatarUrl && pAvatarEl && pFallbackEl) {
+          pAvatarEl.src = avatarUrl;
+          pAvatarEl.style.display = 'block';
+          pFallbackEl.style.display = 'none';
+        } else if (pAvatarEl && pFallbackEl) {
+          pAvatarEl.style.display = 'none';
+          pFallbackEl.style.display = 'flex';
+        }
+
+        if (pGoogleBadge) {
+          pGoogleBadge.style.display = (user.googleId || user.isGoogleAuth) ? 'inline-flex' : 'none';
+        }
+      } else {
+        guestView.style.display = 'block';
+        profileView.style.display = 'none';
+      }
+    }
+  }
+
+  updateCloudStats({ playlistsCount = 0, likesCount = 0, backupsCount = 0 } = {}) {
+    const plEl = document.getElementById('lblCloudPlaylistsCount');
+    const lkEl = document.getElementById('lblCloudLikesCount');
+    const bkEl = document.getElementById('lblCloudBackupsCount');
+    if (plEl) plEl.textContent = String(playlistsCount);
+    if (lkEl) lkEl.textContent = String(likesCount);
+    if (bkEl) bkEl.textContent = String(backupsCount);
+  }
+
+  renderHomeFeed(feedItems, onPlayTrack) {
+    const container = document.getElementById('contenedorFeedInteligente');
+    if (!container) return;
+
+    container.innerHTML = '';
+    if (!feedItems || feedItems.length === 0) {
+      container.innerHTML = `
+        <div class="feed-empty-hint">
+          <i class="ph-bold ph-headphones" style="font-size: 1.5rem; color: var(--neon-cyan); margin-bottom: 6px;"></i>
+          <p>Reproduce más música en AURA para desbloquear recomendaciones personalizadas basadas en tu gusto sonoro.</p>
+        </div>
+      `;
+      return;
+    }
+
+    feedItems.forEach((track) => {
+      const card = document.createElement('div');
+      card.className = 'feed-card';
+
+      const thumb = track.thumbnail || `https://img.youtube.com/vi/${track.videoId || track.id}/mqdefault.jpg`;
+      const title = escapeHtml(track.title || track.titulo || 'Pista');
+      const artist = escapeHtml(track.artist || track.channel || 'AURA Music');
+      const duration = track.duration || track.duracion || '';
+
+      card.innerHTML = `
+        <div class="feed-card-thumb-wrap">
+          <img src="${thumb}" alt="${title}" class="feed-card-thumb" loading="lazy" />
+          <button class="feed-card-play-btn" title="Reproducir">
+            <i class="ph-fill ph-play"></i>
+          </button>
+          ${duration ? `<span class="feed-card-duration">${escapeHtml(duration)}</span>` : ''}
+        </div>
+        <div class="feed-card-info">
+          <h4 class="feed-card-title" title="${title}">${title}</h4>
+          <p class="feed-card-artist">${artist}</p>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        if (onPlayTrack) onPlayTrack(track);
+      });
+
+      container.appendChild(card);
+    });
+  }
+
+  renderTrending(tracks, onPlayTrack) {
+    const container = document.getElementById('contenedorTendencias');
+    if (!container) return;
+
+    container.innerHTML = '';
+    if (!tracks || tracks.length === 0) {
+      container.innerHTML = `
+        <div class="feed-empty-hint">
+          <p>Cargando tendencias musicales...</p>
+        </div>
+      `;
+      return;
+    }
+
+    tracks.forEach((track, idx) => {
+      const card = document.createElement('div');
+      card.className = 'feed-card';
+
+      const thumb = track.thumbnail || `https://img.youtube.com/vi/${track.videoId || track.id}/mqdefault.jpg`;
+      const title = escapeHtml(track.title || track.titulo || 'Pista');
+      const artist = escapeHtml(track.artist || track.channel || 'AURA');
+
+      card.innerHTML = `
+        <div class="feed-card-thumb-wrap">
+          <span class="feed-rank-badge ${idx < 3 ? 'top' : ''}">#${idx + 1}</span>
+          <img src="${thumb}" alt="${title}" class="feed-card-thumb" loading="lazy" />
+          <button class="feed-card-play-btn" title="Reproducir">
+            <i class="ph-fill ph-play"></i>
+          </button>
+        </div>
+        <div class="feed-card-info">
+          <h4 class="feed-card-title" title="${title}">${title}</h4>
+          <p class="feed-card-artist">${artist}</p>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        if (onPlayTrack) onPlayTrack(track);
+      });
+
+      container.appendChild(card);
+    });
+  }
+
+  renderSmartImportModal(importData, onConfirm) {
+    const resultsContainer = document.getElementById('smartImportAnalysisResults');
+    const trackListEl = document.getElementById('smartImportTrackList');
+    const lblCountMusic = document.getElementById('lblCountMusic');
+    const lblCountFiltered = document.getElementById('lblCountFiltered');
+    const tabMusic = document.getElementById('tabSmartMusic');
+    const tabFiltered = document.getElementById('tabSmartFiltered');
+    const chkSelectAll = document.getElementById('chkSelectAllSmart');
+    const selectPlaylist = document.getElementById('selectSmartTargetPlaylist');
+    const btnConfirm = document.getElementById('btnConfirmSmartImport');
+
+    if (!resultsContainer || !trackListEl) return;
+
+    resultsContainer.style.display = 'block';
+
+    const tracks = importData.tracks || [];
+    const musicTracks = tracks.filter((t) => t.isMusic);
+    const filteredTracks = tracks.filter((t) => !t.isMusic);
+
+    if (lblCountMusic) lblCountMusic.textContent = String(musicTracks.length);
+    if (lblCountFiltered) lblCountFiltered.textContent = String(filteredTracks.length);
+
+    // Llenar select de playlist de destino con playlists actuales
+    if (selectPlaylist) {
+      selectPlaylist.innerHTML = '';
+      const defaultName = importData.title ? `${importData.title} (AURA)` : 'Playlist Importada';
+      const optNew = document.createElement('option');
+      optNew.value = '__NEW__';
+      optNew.textContent = `+ Nueva Playlist ("${defaultName}")`;
+      selectPlaylist.appendChild(optNew);
+
+      const allPlaylists = playlistManager.getPlaylists();
+      Object.keys(allPlaylists).forEach((plName) => {
+        const opt = document.createElement('option');
+        opt.value = plName;
+        opt.textContent = plName;
+        selectPlaylist.appendChild(opt);
+      });
+    }
+
+    // Mapa de selección: por defecto sólo la música detectada está seleccionada
+    const selectionMap = new Map();
+    tracks.forEach((t) => {
+      selectionMap.set(t.id, Boolean(t.isMusic));
+    });
+
+    let currentTab = 'music'; // 'music' | 'filtered'
+
+    const renderList = () => {
+      trackListEl.innerHTML = '';
+      const listToShow = currentTab === 'music' ? musicTracks : filteredTracks;
+
+      if (listToShow.length === 0) {
+        trackListEl.innerHTML = `
+          <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+            No hay elementos en esta categoría.
+          </div>
+        `;
+        return;
+      }
+
+      listToShow.forEach((track) => {
+        const item = document.createElement('div');
+        item.className = 'smart-track-row';
+
+        const isChecked = selectionMap.get(track.id);
+        const thumb = track.thumbnail || `https://img.youtube.com/vi/${track.id}/mqdefault.jpg`;
+        const title = escapeHtml(track.title || 'Video');
+        const artist = escapeHtml(track.artist || 'Canal');
+        const duration = track.duration || '';
+
+        let badgeHtml = '';
+        if (track.isMusic) {
+          badgeHtml = '<span class="filter-reason-badge is-music"><i class="ph-bold ph-check"></i> Música</span>';
+        } else {
+          badgeHtml = `<span class="filter-reason-badge is-filtered"><i class="ph-bold ph-warning"></i> ${escapeHtml(track.filterReason || 'No musical')}</span>`;
+        }
+
+        item.innerHTML = `
+          <input type="checkbox" class="smart-track-chk" ${isChecked ? 'checked' : ''} />
+          <img src="${thumb}" alt="${title}" class="smart-track-thumb" loading="lazy" />
+          <div class="smart-track-meta">
+            <h5 class="smart-track-title" title="${title}">${title}</h5>
+            <p class="smart-track-artist">${artist} ${duration ? `• ${duration}` : ''}</p>
+          </div>
+          ${badgeHtml}
+        `;
+
+        const chk = item.querySelector('.smart-track-chk');
+        chk.addEventListener('change', () => {
+          selectionMap.set(track.id, chk.checked);
+          updateSelectAllState();
+        });
+
+        item.addEventListener('click', (e) => {
+          if (e.target !== chk) {
+            chk.checked = !chk.checked;
+            selectionMap.set(track.id, chk.checked);
+            updateSelectAllState();
+          }
+        });
+
+        trackListEl.appendChild(item);
+      });
+
+      updateSelectAllState();
+    };
+
+    const updateSelectAllState = () => {
+      if (!chkSelectAll) return;
+      const listToShow = currentTab === 'music' ? musicTracks : filteredTracks;
+      if (listToShow.length === 0) {
+        chkSelectAll.checked = false;
+        return;
+      }
+      const allSelected = listToShow.every((t) => selectionMap.get(t.id));
+      chkSelectAll.checked = allSelected;
+    };
+
+    if (chkSelectAll) {
+      chkSelectAll.onchange = () => {
+        const listToShow = currentTab === 'music' ? musicTracks : filteredTracks;
+        listToShow.forEach((t) => selectionMap.set(t.id, chkSelectAll.checked));
+        renderList();
+      };
+    }
+
+    if (tabMusic) {
+      tabMusic.onclick = () => {
+        currentTab = 'music';
+        tabMusic.classList.add('active');
+        if (tabFiltered) tabFiltered.classList.remove('active');
+        renderList();
+      };
+    }
+
+    if (tabFiltered) {
+      tabFiltered.onclick = () => {
+        currentTab = 'filtered';
+        tabFiltered.classList.add('active');
+        if (tabMusic) tabMusic.classList.remove('active');
+        renderList();
+      };
+    }
+
+    if (btnConfirm) {
+      btnConfirm.onclick = () => {
+        const selectedTracks = tracks.filter((t) => selectionMap.get(t.id));
+        if (selectedTracks.length === 0) {
+          this.showToast('Selecciona al menos una canción para importar');
+          return;
+        }
+
+        const targetValue = selectPlaylist ? selectPlaylist.value : '__NEW__';
+        const defaultName = importData.title ? `${importData.title} (AURA)` : 'Playlist Importada';
+        const targetPlaylistName = targetValue === '__NEW__' ? defaultName : targetValue;
+
+        if (onConfirm) {
+          onConfirm({
+            playlistName: targetPlaylistName,
+            isNew: targetValue === '__NEW__',
+            tracks: selectedTracks
+          });
+        }
+      };
+    }
+
+    renderList();
+  }
 }
 
 /**

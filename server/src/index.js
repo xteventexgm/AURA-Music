@@ -66,6 +66,7 @@ const authLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/google', authLimiter);
 
 // Carpeta pública para avatares locales (fallback)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

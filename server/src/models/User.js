@@ -20,8 +20,14 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'La contraseña es obligatoria'],
+      required: function () {
+        return !this.googleId;
+      },
       minlength: [6, 'Mínimo 6 caracteres']
+    },
+    googleId: {
+      type: String,
+      sparse: true
     },
     avatarUrl: {
       type: String,
@@ -44,13 +50,14 @@ const userSchema = new mongoose.Schema(
 
 // Hash de contraseña automático antes de guardar (Mongoose 9 async)
 userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
+  if (!this.password || !this.isModified('password')) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
 // Método para comparar contraseñas
 userSchema.methods.comparePassword = async function (candidatePassword) {
+  if (!this.password) return false;
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
@@ -70,6 +77,7 @@ userSchema.methods.toSafeObject = function () {
     username: this.username,
     email: this.email,
     avatarUrl: safeAvatarUrl,
+    isGoogleAuth: Boolean(this.googleId),
     bio: this.bio,
     preferences: this.preferences,
     createdAt: this.createdAt

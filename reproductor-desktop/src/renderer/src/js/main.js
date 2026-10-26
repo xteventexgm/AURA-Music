@@ -41,6 +41,7 @@ import { qrService } from './qrService.js';
 import { CarModeManager } from './carMode.js';
 import { AudioVisualizer } from './visualizer.js';
 import { uiManager } from './ui.js';
+import { authService } from './authService.js';
 
 // Estado en memoria
 let busquedasRecientes = [];
@@ -80,6 +81,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initQrModals();
   initKeyboardShortcuts();
   initNetworkDetection();
+  initAuthAndCloud();
+  initSmartImportModal();
 
   // Modo Conducción
   const carModeContainer = document.getElementById('vista-car-mode');
@@ -97,7 +100,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   audioEngine.setCallbacks({
     onPlay: (track) => {
       const current = track || queueManager.getCurrentTrack();
-      if (current) syncTrackMetadataUI(current);
+      if (current) {
+        syncTrackMetadataUI(current);
+        authService.recordListen(current, 0, false);
+      }
       updatePlayPauseIcons(false);
       document.getElementById('fsVinylWrapper')?.classList.add('is-playing');
       visualizer.initWebAudio();
@@ -115,6 +121,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
     onEnded: () => {
       visualizer.stop();
+      const current = queueManager.getCurrentTrack();
+      if (current) {
+        authService.recordListen(current, audioEngine.getDuration() || 0, true);
+      }
       playNextTrack(true);
     },
     onError: (err) => {
@@ -204,6 +214,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateMarqueeTitle('miniTitleTrack', t, 'miniTitle', 'mini-title');
     }
   });
+
+  // Inicializar sesión de usuario y recomendaciones
+  initUserSessionAndFeed();
 
   console.log('✅ [AURA] Listo y operativo.');
 });
@@ -1274,6 +1287,15 @@ function initSettings() {
     const videoId = extraerVideoId(url);
 
     if (playlistId) {
+      const modal = document.getElementById('modalSmartImport');
+      const inputSmart = document.getElementById('inputSmartImportUrl');
+      if (modal && inputSmart) {
+        inputSmart.value = url;
+        modal.classList.add('open');
+        document.getElementById('btnAnalyzeSmartImport')?.click();
+        return;
+      }
+
       uiManager.showToast('Escaneando playlist de YouTube... ⏳');
       try {
         const name = await obtenerNombrePlaylist(playlistId);
@@ -1801,4 +1823,399 @@ function initNetworkDetection() {
   window.addEventListener('offline', () => updateStatus(false, true));
   updateStatus(navigator.onLine, false);
 }
+
+/* ======================================================
+   AUTENTICACIÓN, CUENTA AURA Y MONGO ATLAS
+====================================================== */
+function initAuthAndCloud() {
+  const modal = document.getElementById('modalAuraAccount');
+  const btnOpenHeader = document.getElementById('btnUserAccount');
+  const btnOpenSettings = document.getElementById('btnSettingsOpenAccount');
+  const btnClose = document.getElementById('btnCloseModalAccount');
+
+  const openAccountModal = () => {
+    modal?.classList.add('open');
+    refreshCloudStats();
+  };
+
+  btnOpenHeader?.addEventListener('click', openAccountModal);
+  btnOpenSettings?.addEventListener('click', openAccountModal);
+  btnClose?.addEventListener('click', () => modal?.classList.remove('open'));
+
+  // Pestañas Iniciar Sesión / Registro
+  let authMode = 'login';
+  const tabLogin = document.getElementById('tabAuthLogin');
+  const tabRegister = document.getElementById('tabAuthRegister');
+  const fieldUsername = document.getElementById('fieldGroupUsername');
+  const btnSubmit = document.getElementById('btnSubmitAuth');
+
+  tabLogin?.addEventListener('click', () => {
+    authMode = 'login';
+    tabLogin.classList.add('active');
+    tabRegister?.classList.remove('active');
+    if (fieldUsername) fieldUsername.style.display = 'none';
+    if (btnSubmit) btnSubmit.innerHTML = '<i class="ph-bold ph-sign-in"></i> Iniciar Sesión';
+  });
+
+  tabRegister?.addEventListener('click', () => {
+    authMode = 'register';
+    tabRegister.classList.add('active');
+    tabLogin?.classList.remove('active');
+    if (fieldUsername) fieldUsername.style.display = 'block';
+    if (btnSubmit) btnSubmit.innerHTML = '<i class="ph-bold ph-user-plus"></i> Crear Cuenta';
+  });
+
+  // Envío Formulario Auth
+  btnSubmit?.addEventListener('click', async () => {
+    const email = document.getElementById('inputAuthEmail')?.value.trim();
+    const password = document.getElementById('inputAuthPassword')?.value;
+    const username = document.getElementById('inputAuthUsername')?.value.trim();
+
+    if (!email || !password) {
+      uiManager.showToast('Por favor completa todos los campos requeridos');
+      return;
+    }
+
+    try {
+      if (authMode === 'register') {
+        if (!username) {
+          uiManager.showToast('Ingresa un nombre de usuario o alias');
+          return;
+        }
+        uiManager.showToast('Creando cuenta AURA en Atlas... ⏳');
+        const user = await authService.register(username, email, password);
+        uiManager.showToast(`¡Bienvenido a AURA, ${user.username || user.name}! 🎉`);
+      } else {
+        uiManager.showToast('Iniciando sesión en AURA Cloud... ⏳');
+        const user = await authService.login(email, password);
+        uiManager.showToast(`¡Hola de nuevo, ${user.username || user.name}! ✨`);
+      }
+
+      modal?.classList.remove('open');
+      await refreshUserDataAndFeed();
+    } catch (err) {
+      uiManager.showToast(`⚠️ ${err.message || 'Error en autenticación'}`);
+    }
+  });
+
+  // Google 1-Click Sign In
+  initGoogleIdentityServices();
+  document.getElementById('btnGoogleSignIn')?.addEventListener('click', async () => {
+    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+      try {
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            fallbackGooglePrompt();
+          }
+        });
+        return;
+      } catch (_) {}
+    }
+    fallbackGooglePrompt();
+  });
+
+  // Cerrar Sesión
+  document.getElementById('btnLogoutAccount')?.addEventListener('click', () => {
+    authService.logout();
+    uiManager.updateUserAccountBadge(null, false);
+    uiManager.showToast('Sesión de AURA Cloud cerrada');
+  });
+
+  // Sincronización Manual a Atlas
+  const handleCloudSync = async () => {
+    if (!authService.isLoggedIn()) {
+      openAccountModal();
+      uiManager.showToast('Inicia sesión para sincronizar tus playlists en la nube');
+      return;
+    }
+
+    uiManager.showToast('Sincronizando playlists y Me Gusta con MongoDB Atlas... ☁️');
+    try {
+      const okPl = await authService.syncPlaylistsToCloud(playlistManager.getPlaylists());
+      const okLk = await authService.syncLikesToCloud(playlistManager.getFavorites());
+      if (okPl && okLk) {
+        uiManager.showToast('¡Playlists y Me Gusta sincronizados en Atlas! 🚀');
+        refreshCloudStats();
+      } else {
+        uiManager.showToast('Aviso: Sincronización parcial');
+      }
+    } catch (err) {
+      uiManager.showToast(`Error de sincronización: ${err.message}`);
+    }
+  };
+
+  document.getElementById('btnSyncCloudNow')?.addEventListener('click', handleCloudSync);
+  document.getElementById('btnQuickCloudSync')?.addEventListener('click', handleCloudSync);
+
+  // Crear Respaldo en la Nube (Snapshot)
+  const handleCreateBackup = async () => {
+    if (!authService.isLoggedIn()) {
+      openAccountModal();
+      uiManager.showToast('Inicia sesión para crear copias en la nube');
+      return;
+    }
+
+    const defaultName = `Respaldo AURA - ${new Date().toLocaleDateString()}`;
+    const name = prompt('Nombre del respaldo en MongoDB Atlas:', defaultName) || defaultName;
+
+    uiManager.showToast('Guardando snapshot en Atlas... 💾');
+    try {
+      await authService.createCloudBackup(
+        name,
+        playlistManager.getPlaylists(),
+        playlistManager.getFavorites()
+      );
+      uiManager.showToast('¡Copia de seguridad guardada con éxito en Atlas! 🛡️');
+      refreshCloudStats();
+    } catch (err) {
+      uiManager.showToast(`Error al crear copia: ${err.message}`);
+    }
+  };
+
+  document.getElementById('btnCreateCloudBackup')?.addEventListener('click', handleCreateBackup);
+  document.getElementById('btnQuickBackupCloud')?.addEventListener('click', handleCreateBackup);
+
+  // Restaurar Respaldo desde la Nube
+  document.getElementById('btnRestoreCloudBackup')?.addEventListener('click', async () => {
+    if (!authService.isLoggedIn()) {
+      openAccountModal();
+      return;
+    }
+
+    uiManager.showToast('Consultando respaldos en Atlas... ⏳');
+    try {
+      const backups = await authService.listCloudBackups();
+      if (!backups || backups.length === 0) {
+        uiManager.showToast('Aún no tienes copias de seguridad en la nube');
+        return;
+      }
+
+      const latest = backups[0];
+      const confirmRestore = confirm(
+        `¿Deseas restaurar la copia "${latest.name}" (${latest.itemCount || 0} elementos)?\nSe fusionará con tu biblioteca actual.`
+      );
+      if (!confirmRestore) return;
+
+      const payload = await authService.restoreCloudBackup(latest._id || latest.id);
+      if (payload && payload.playlists) {
+        Object.entries(payload.playlists).forEach(([pName, tracks]) => {
+          if (!playlistManager.getPlaylist(pName)) {
+            playlistManager.createPlaylist(pName);
+          }
+          if (Array.isArray(tracks)) {
+            tracks.forEach((t) => playlistManager.addTrack(pName, t));
+          }
+        });
+        uiManager.renderPlaylists(playlistManager.getPlaylists(), (n, t) => openPlaylistDetail(n, t));
+        uiManager.showToast('¡Copia de seguridad restaurada exitosamente! 🎉');
+      }
+    } catch (err) {
+      uiManager.showToast(`Error al restaurar: ${err.message}`);
+    }
+  });
+}
+
+function initGoogleIdentityServices() {
+  const clientId = '681457850849-5r522c07ckjhjkvk6281sqk981p3b97b.apps.googleusercontent.com';
+  if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response) => {
+          if (response && response.credential) {
+            uiManager.showToast('Autenticando con Google (1-Clic)... ⚡');
+            try {
+              const user = await authService.loginWithGoogle(response.credential);
+              uiManager.showToast(`¡Bienvenido, ${user.username || user.name}! 🎉`);
+              uiManager.closeModal(document.getElementById('modalAuraAccount'));
+              await refreshUserDataAndFeed();
+            } catch (err) {
+              uiManager.showToast(`Error: ${err.message}`);
+            }
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('[AURA] Google Identity Services init note:', e);
+    }
+  }
+}
+
+async function fallbackGooglePrompt() {
+  const email = prompt(
+    '⚡ AURA Google Sign-In (1-Clic):\nIngresa tu correo de Google para vincular automáticamente tu perfil y biblioteca:',
+    authService.getUser()?.email || ''
+  );
+  if (!email || !email.trim()) return;
+  const cleanEmail = email.trim();
+  const name = cleanEmail.split('@')[0];
+  const picture = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanEmail)}`;
+
+  uiManager.showToast('Vinculando cuenta de Google con AURA... ⚡');
+  try {
+    const user = await authService.loginWithGoogle(null, {
+      email: cleanEmail,
+      name,
+      picture
+    });
+    uiManager.showToast(`¡Conectado como ${user.username || user.name}! 🎉`);
+    uiManager.closeModal(document.getElementById('modalAuraAccount'));
+    await refreshUserDataAndFeed();
+  } catch (err) {
+    uiManager.showToast(`Error: ${err.message}`);
+  }
+}
+
+async function refreshCloudStats() {
+  if (!authService.isLoggedIn()) return;
+  try {
+    const pls = playlistManager.getPlaylists();
+    const lks = playlistManager.getFavorites();
+    const backups = await authService.listCloudBackups();
+    uiManager.updateCloudStats({
+      playlistsCount: Object.keys(pls).length,
+      likesCount: lks.length,
+      backupsCount: (backups || []).length
+    });
+  } catch (_) {}
+}
+
+/* ======================================================
+   FEED INTELIGENTE Y RECOMENDACIONES CLOUD
+====================================================== */
+async function initUserSessionAndFeed() {
+  authService.subscribe((user, isLoggedIn) => {
+    uiManager.updateUserAccountBadge(user, isLoggedIn);
+    refreshCloudStats();
+  });
+
+  try {
+    if (authService.getToken()) {
+      await authService.fetchProfile();
+    }
+  } catch (_) {}
+
+  uiManager.updateUserAccountBadge(authService.getUser(), authService.isLoggedIn());
+  await loadHomeFeedAndTrending();
+
+  document.querySelectorAll('.chip-mini-filter').forEach((chip) => {
+    chip.addEventListener('click', async () => {
+      document.querySelectorAll('.chip-mini-filter').forEach((c) => c.classList.remove('active'));
+      chip.classList.add('active');
+      const cat = chip.dataset.trendCat || 'pop';
+      const tracks = await authService.getTrending(cat);
+      uiManager.renderTrending(tracks, (track) => playSelectedTrack(track));
+    });
+  });
+}
+
+async function loadHomeFeedAndTrending() {
+  try {
+    const feed = await authService.getPersonalizedFeed();
+    uiManager.renderHomeFeed(feed, (track) => playSelectedTrack(track));
+  } catch (_) {
+    uiManager.renderHomeFeed([], null);
+  }
+
+  try {
+    const trending = await authService.getTrending('pop');
+    uiManager.renderTrending(trending, (track) => playSelectedTrack(track));
+  } catch (_) {
+    uiManager.renderTrending([], null);
+  }
+}
+
+async function refreshUserDataAndFeed() {
+  uiManager.updateUserAccountBadge(authService.getUser(), authService.isLoggedIn());
+  await refreshCloudStats();
+  await loadHomeFeedAndTrending();
+}
+
+function playSelectedTrack(track) {
+  const normalized = {
+    tipo: 'online',
+    id: track.id || track.videoId,
+    videoId: track.videoId || track.id,
+    titulo: track.title || track.titulo || 'Música',
+    title: track.title || track.titulo || 'Música',
+    artist: track.artist || track.channel || 'AURA',
+    channel: track.channel || track.artist || 'AURA',
+    duracion: track.duration || track.duracion || '0:00',
+    duration: track.duration || track.duracion || '0:00',
+    urlYoutube: track.url || track.urlYoutube || `https://www.youtube.com/watch?v=${track.id || track.videoId}`,
+    thumbnail: track.thumbnail || `https://img.youtube.com/vi/${track.id || track.videoId}/mqdefault.jpg`
+  };
+  queueManager.addTrack(normalized);
+  queueManager.jumpTo(queueManager.getQueue().length - 1);
+  playCurrentTrack();
+  uiManager.showToast(`▶️ Reproduciendo: ${normalized.titulo}`);
+}
+
+/* ======================================================
+   IMPORTADOR INTELIGENTE (FILTRO NO-MÚSICA)
+====================================================== */
+function initSmartImportModal() {
+  const modal = document.getElementById('modalSmartImport');
+  const btnOpen = document.getElementById('btnOpenSmartImportModal');
+  const btnClose = document.getElementById('btnCloseModalSmartImport');
+  const inputUrl = document.getElementById('inputSmartImportUrl');
+  const btnAnalyze = document.getElementById('btnAnalyzeSmartImport');
+
+  btnOpen?.addEventListener('click', () => {
+    modal?.classList.add('open');
+  });
+
+  btnClose?.addEventListener('click', () => {
+    modal?.classList.remove('open');
+  });
+
+  btnAnalyze?.addEventListener('click', async () => {
+    const url = inputUrl.value.trim();
+    if (!url) {
+      uiManager.showToast('Ingresa un enlace de video o playlist de YouTube');
+      return;
+    }
+
+    uiManager.showToast('Analizando contenido y filtrando no-música... ⏳');
+    try {
+      const data = await authService.importFromYouTubeUrl(url);
+      if (!data || !data.tracks || data.tracks.length === 0) {
+        uiManager.showToast('No se encontraron pistas públicas en este enlace');
+        return;
+      }
+
+      uiManager.renderSmartImportModal(data, ({ playlistName, isNew, tracks }) => {
+        if (isNew && !playlistManager.getPlaylist(playlistName)) {
+          playlistManager.createPlaylist(playlistName);
+        }
+
+        tracks.forEach((t) => {
+          playlistManager.addTrack(playlistName, {
+            id: t.id,
+            videoId: t.id,
+            tipo: 'online',
+            titulo: t.title,
+            title: t.title,
+            channel: t.artist,
+            artist: t.artist,
+            duracion: t.duration,
+            duration: t.duration,
+            thumbnail: t.thumbnail,
+            urlYoutube: t.url || `https://www.youtube.com/watch?v=${t.id}`
+          });
+        });
+
+        uiManager.showToast(`🎉 ¡${tracks.length} canciones importadas a "${playlistName}"!`);
+        modal?.classList.remove('open');
+        inputUrl.value = '';
+        const resultsEl = document.getElementById('smartImportAnalysisResults');
+        if (resultsEl) resultsEl.style.display = 'none';
+        uiManager.renderPlaylists(playlistManager.getPlaylists(), (n, t) => openPlaylistDetail(n, t));
+      });
+    } catch (err) {
+      uiManager.showToast(`⚠️ ${err.message || 'Error al analizar YouTube'}`);
+    }
+  });
+}
+
 
