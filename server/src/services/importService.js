@@ -38,12 +38,34 @@ function cleanTitleAndArtist(rawTitle, rawUploader) {
   return { title, artist };
 }
 
+function isValidYouTubeInput(input) {
+  if (!input || typeof input !== 'string') return false;
+  const trimmed = input.trim();
+  if (trimmed.startsWith('-')) return false; // Bloquear CLI flag injection
+
+  // Si es un ID de video o playlist directo
+  if (/^[a-zA-Z0-9_-]{11,34}$/.test(trimmed)) return true;
+
+  try {
+    const url = new URL(trimmed);
+    if (!['http:', 'https:'].includes(url.protocol)) return false;
+    const hostname = url.hostname.toLowerCase();
+    const validHosts = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be'];
+    return validHosts.includes(hostname) || hostname.endsWith('.youtube.com');
+  } catch {
+    return false;
+  }
+}
+
 export async function importFromUrl(rawUrl) {
   if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.trim()) {
     throw new Error('Debes proporcionar un enlace o ID de YouTube válido.');
   }
 
   const input = rawUrl.trim();
+  if (!isValidYouTubeInput(input)) {
+    throw new Error('El enlace proporcionado no es un dominio o ID de YouTube válido.');
+  }
 
   // Detectar si es un enlace de playlist
   const isPlaylist =

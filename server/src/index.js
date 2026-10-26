@@ -27,13 +27,45 @@ for (const envPath of envPaths) {
   }
 }
 
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middlewares
+// Middlewares de Seguridad y Cabeceras
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginEmbedderPolicy: false
+  })
+);
+
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Limitadores de Tasa (Rate Limiting)
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 150,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes, por favor inténtalo de nuevo más tarde.' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos de autenticación. Espera 15 minutos.' }
+});
+
+app.use('/api/', apiLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 
 // Carpeta pública para avatares locales (fallback)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

@@ -151,7 +151,9 @@ export class QueueManager {
   removeTrack(index) {
     if (index >= 0 && index < this.queue.length) {
       this.queue.splice(index, 1);
-      if (this.currentIndex >= this.queue.length) {
+      if (index < this.currentIndex) {
+        this.currentIndex--;
+      } else if (this.currentIndex >= this.queue.length) {
         this.currentIndex = Math.max(0, this.queue.length - 1);
       }
       if (this.isShuffle && this.queue.length > 0) {

@@ -52,28 +52,20 @@ async function resolveFromInvidious(videoId) {
   return null;
 }
 
-// Lista de proxies rotativos de Webshare para bypass anti-bot y enlace IP en la nube
-const WEBSHARE_PROXIES = [
-  'http://xteventexgm:xteventex777@23.26.71.145:5628',
-  'http://xteventexgm:xteventex777@64.137.10.153:5803',
-  'http://xteventexgm:xteventex777@198.46.161.42:5092',
-  'http://xteventexgm:xteventex777@104.164.49.38:7693',
-  'http://xteventexgm:xteventex777@45.38.107.97:6014',
-  'http://xteventexgm:xteventex777@64.137.96.74:6641',
-  'http://xteventexgm:xteventex777@198.23.243.226:6361',
-  'http://xteventexgm:xteventex777@38.154.185.97:6370',
-  'http://xteventexgm:xteventex777@84.247.60.125:6095',
-  'http://xteventexgm:xteventex777@191.96.254.138:6185'
-];
-
 let proxyIndex = 0;
 
 function getProxyList() {
-  const envProxy = process.env.PROXY_URL || process.env.WEBSHARE_PROXY;
-  if (envProxy && envProxy.trim()) {
-    return [envProxy.trim(), ...WEBSHARE_PROXIES];
+  const proxies = [];
+  const single = process.env.PROXY_URL || process.env.WEBSHARE_PROXY;
+  if (single && single.trim()) {
+    proxies.push(single.trim());
   }
-  return WEBSHARE_PROXIES;
+  const multi = process.env.WEBSHARE_PROXIES;
+  if (multi && multi.trim()) {
+    const list = multi.split(',').map((p) => p.trim()).filter(Boolean);
+    proxies.push(...list);
+  }
+  return [...new Set(proxies)];
 }
 
 // Helper para realizar peticiones HTTP respetando la IP asignada por Google Video
@@ -190,7 +182,10 @@ export async function handleStreamRequest(req, res, videoId) {
     if (!audioResponse.ok && audioResponse.status !== 206) {
       console.warn(`[Stream ${videoId}]: Origen devolvió HTTP ${audioResponse.status}. Invalidando caché y rotando proxy...`);
       urlCache.delete(videoId);
-      proxyIndex = (proxyIndex + 1) % WEBSHARE_PROXIES.length;
+      const activeProxies = getProxyList();
+      if (activeProxies.length > 0) {
+        proxyIndex = (proxyIndex + 1) % activeProxies.length;
+      }
       info = await resolveStreamInfo(videoId);
       audioResponse = await fetchRemoteStream(info.url, info.proxy, headers);
     }

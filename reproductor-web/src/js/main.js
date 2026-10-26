@@ -108,15 +108,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     onPause: (track) => {
       updatePlayPauseIcons(true);
       document.getElementById('fsVinylWrapper')?.classList.remove('is-playing');
+      visualizer.stop();
       carModeManager.update();
     },
     onTimeUpdate: (currentTime, duration) => {
       updateProgressDisplay(currentTime, duration);
     },
     onEnded: () => {
+      visualizer.stop();
       playNextTrack(true);
     },
     onError: (err) => {
+      visualizer.stop();
       uiManager.showToast(`⚠️ ${err.message || 'Error al reproducir audio'}`);
       updatePlayPauseIcons(true);
       const current = queueManager.getCurrentTrack();

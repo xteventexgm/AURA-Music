@@ -151,7 +151,9 @@ export class QueueManager {
   removeTrack(index) {
     if (index >= 0 && index < this.queue.length) {
       this.queue.splice(index, 1);
-      if (this.currentIndex >= this.queue.length) {
+      if (index < this.currentIndex) {
+        this.currentIndex--;
+      } else if (this.currentIndex >= this.queue.length) {
         this.currentIndex = Math.max(0, this.queue.length - 1);
       }
       if (this.isShuffle && this.queue.length > 0) {
@@ -175,7 +177,6 @@ export class QueueManager {
     const [moved] = this.queue.splice(fromIndex, 1);
     this.queue.splice(toIndex, 0, moved);
 
-    // Ajustar el índice activo para que siga a la pista actual
     if (currentTrack) {
       const newCurr = this.queue.findIndex(
         (t) => (t.urlYoutube || t.url || t.titulo) === (currentTrack.urlYoutube || currentTrack.url || currentTrack.titulo)

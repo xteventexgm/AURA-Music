@@ -14,6 +14,7 @@ class AudioEngine {
     this.currentTrack = null;
     this.isLoading = false;
     this.trackProvider = null;
+    this._playSessionId = 0;
 
     this.callbacks = {
       onPlay: () => {},
@@ -194,6 +195,7 @@ class AudioEngine {
   async loadAndPlay(track) {
     if (!track) return false;
 
+    const currentSession = ++this._playSessionId;
     this.currentTrack = track;
     this.isLoading = true;
     this.callbacks.onLoading(track);
@@ -213,23 +215,32 @@ class AudioEngine {
       streamUrl = track.audioUrl || targetUrl;
     } else if (!streamUrl && targetUrl) {
       if (!navigator.onLine) {
-        this.isLoading = false;
-        this.callbacks.onError(new Error('Sin conexión a internet. Esta canción no ha sido descargada para escuchar offline.'));
+        if (this._playSessionId === currentSession) {
+          this.isLoading = false;
+          this.callbacks.onError(new Error('Sin conexión a internet. Esta canción no ha sido descargada para escuchar offline.'));
+        }
         return false;
       }
       try {
         streamUrl = await obtenerEnlaceAudio(targetUrl);
+        if (this._playSessionId !== currentSession) return false;
         track.audioUrl = streamUrl; // Guardar en memoria de sesión
       } catch (err) {
-        this.isLoading = false;
-        this.callbacks.onError(err);
+        if (this._playSessionId === currentSession) {
+          this.isLoading = false;
+          this.callbacks.onError(err);
+        }
         return false;
       }
     }
 
+    if (this._playSessionId !== currentSession) return false;
+
     if (!streamUrl) {
-      this.isLoading = false;
-      this.callbacks.onError(new Error('No se pudo resolver el enlace de audio para esta pista.'));
+      if (this._playSessionId === currentSession) {
+        this.isLoading = false;
+        this.callbacks.onError(new Error('No se pudo resolver el enlace de audio para esta pista.'));
+      }
       return false;
     }
 
@@ -237,9 +248,13 @@ class AudioEngine {
       this.audio.src = streamUrl;
       this.updateMediaSessionMetadata(track);
       await this.audio.play();
+      if (this._playSessionId !== currentSession) return false;
       this.isLoading = false;
       return true;
     } catch (err) {
+      if (this._playSessionId !== currentSession || err.name === 'AbortError') {
+        return false;
+      }
       // Si la URL en caché falló (token expirado tras recargar la página), reintentar resolviendo un enlace fresco (solo online)
       if (targetUrl && !track.isLocal && !targetUrl.startsWith('file:')) {
         console.warn('[AudioEngine] URL en caché falló, solicitando enlace fresco...');
@@ -247,19 +262,24 @@ class AudioEngine {
           track.audioUrl = null;
           track.streamUrl = null;
           streamUrl = await obtenerEnlaceAudio(targetUrl);
+          if (this._playSessionId !== currentSession) return false;
           track.audioUrl = streamUrl;
           this.audio.src = streamUrl;
           this.updateMediaSessionMetadata(track);
           await this.audio.play();
+          if (this._playSessionId !== currentSession) return false;
           this.isLoading = false;
           return true;
         } catch (retryErr) {
+          if (this._playSessionId !== currentSession || retryErr.name === 'AbortError') return false;
           console.error('[AudioEngine] Reintento falló:', retryErr);
         }
       }
       console.error('[AudioEngine] Error al reproducir audio:', err);
-      this.isLoading = false;
-      this.callbacks.onError(err);
+      if (this._playSessionId === currentSession) {
+        this.isLoading = false;
+        this.callbacks.onError(err);
+      }
       return false;
     }
   }

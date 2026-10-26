@@ -5,6 +5,16 @@
 import { playlistManager } from './playlists.js';
 import { isTrackDownloaded } from './storage.js';
 
+export function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export class UIManager {
   constructor() {
     this.toastContainer = document.getElementById('toast-container');
@@ -61,7 +71,7 @@ export class UIManager {
       const chip = document.createElement('div');
       chip.className = 'recent-chip';
       chip.innerHTML = `
-        <span><i class="ph ph-magnifying-glass"></i> ${term}</span>
+        <span><i class="ph ph-magnifying-glass"></i> ${escapeHtml(term)}</span>
         <button class="btn-del-recent" title="Eliminar"><i class="ph-bold ph-x"></i></button>
       `;
 
@@ -104,6 +114,9 @@ export class UIManager {
       const isFav = playlistManager.isFavorite(track);
       const isDown = isTrackDownloaded(track);
       const thumb = track.thumbnail || '/icon.png';
+      const safeTitle = escapeHtml(track.title || track.titulo || 'Música');
+      const safeChannel = escapeHtml(track.channel || 'YouTube');
+      const safeDuration = escapeHtml(track.duration || track.duracion || '0:00');
 
       li.innerHTML = `
         <div class="song-item-left">
@@ -114,14 +127,14 @@ export class UIManager {
             </div>
           </div>
           <div class="song-info">
-            <h4 class="song-title" title="${track.title}">
-              <span>${track.title}</span>
+            <h4 class="song-title" title="${safeTitle}">
+              <span>${safeTitle}</span>
             </h4>
             <div class="song-meta">
               ${isDown ? '<span class="download-tag"><i class="ph-bold ph-check"></i> Guardada</span><span>•</span>' : ''}
-              <span>${track.channel || 'YouTube'}</span>
+              <span>${safeChannel}</span>
               <span>•</span>
-              <span><i class="ph ph-clock"></i> ${track.duration || '0:00'}</span>
+              <span><i class="ph ph-clock"></i> ${safeDuration}</span>
             </div>
           </div>
           ${isDown ? '<span class="download-led" title="Descargada en el dispositivo (Offline)"></span>' : ''}
@@ -219,12 +232,13 @@ export class UIManager {
       const card = document.createElement('div');
       card.className = 'playlist-card';
       const isFav = name === 'Favoritas';
+      const safeName = escapeHtml(name);
 
       card.innerHTML = `
         <div class="playlist-card-icon" style="${isFav ? 'color: var(--neon-magenta);' : ''}">
           <i class="${isFav ? 'ph-fill ph-heart' : 'ph-fill ph-music-notes'}"></i>
         </div>
-        <h3 class="playlist-card-title">${name}</h3>
+        <h3 class="playlist-card-title">${safeName}</h3>
         <span class="playlist-card-count">${tracks.length} canción${tracks.length === 1 ? '' : 'es'}</span>
       `;
 
@@ -340,6 +354,8 @@ export class UIManager {
         li.dataset.index = index;
         const thumb = track.thumbnail || '/icon.png';
         const isDown = isTrackDownloaded(track);
+        const safeTitle = escapeHtml(track.titulo || track.title || 'Música');
+        const safeDuration = escapeHtml(track.duracion || track.duration || '0:00');
 
         // Sin drag-handle en playlists: el reordenamiento solo existe en la cola según las indicaciones
         li.innerHTML = `
@@ -351,12 +367,12 @@ export class UIManager {
               </div>
             </div>
             <div class="song-info">
-              <h4 class="song-title" title="${track.titulo || track.title}">
-                <span>${track.titulo || track.title}</span>
+              <h4 class="song-title" title="${safeTitle}">
+                <span>${safeTitle}</span>
               </h4>
               <div class="song-meta">
                 ${isDown ? '<span class="download-tag"><i class="ph-bold ph-check"></i> Guardada</span><span>•</span>' : ''}
-                <span>${track.duracion || '0:00'}</span>
+                <span>${safeDuration}</span>
               </div>
             </div>
             ${isDown ? '<span class="download-led" title="Descargada en el dispositivo (Offline)"></span>' : ''}
@@ -419,7 +435,6 @@ export class UIManager {
       });
 
       listEl.appendChild(fragment);
-      // NOTE: Reordenamiento deshabilitado en playlist por especificación del usuario
     }
   }
 
@@ -442,6 +457,8 @@ export class UIManager {
       li.className = `song-item ${index === currentIndex ? 'is-playing' : ''}`;
       li.dataset.index = index;
       const thumb = track.thumbnail || '/icon.png';
+      const safeTitle = escapeHtml(track.titulo || track.title || 'Música');
+      const safeDuration = escapeHtml(track.duracion || track.duration || '0:00');
 
       li.innerHTML = `
         <div class="drag-handle" title="Mantén presionado para mover">
@@ -453,9 +470,9 @@ export class UIManager {
           </div>
           <div class="song-info">
             <h4 class="song-title">
-              <span>${index + 1}. ${track.titulo || track.title}</span>
+              <span>${index + 1}. ${safeTitle}</span>
             </h4>
-            <span class="song-meta">${track.duracion || track.duration || '0:00'}</span>
+            <span class="song-meta">${safeDuration}</span>
           </div>
           ${isTrackDownloaded(track) ? '<span class="download-led" title="Descargada (Offline)"></span>' : ''}
         </div>
@@ -502,7 +519,7 @@ export class UIManager {
       const visible = key.length > 20 ? key.slice(0, 10) + '...' + key.slice(-4) : key;
 
       li.innerHTML = `
-        <span style="font-family: monospace; font-size: 0.82rem; color: var(--text-muted);">${index + 1}. ${visible}</span>
+        <span style="font-family: monospace; font-size: 0.82rem; color: var(--text-muted);">${index + 1}. ${escapeHtml(visible)}</span>
         <button class="btn-icon-subtle btn-del-key" style="color: var(--neon-red);" title="Eliminar"><i class="ph-bold ph-trash"></i></button>
       `;
 
@@ -570,6 +587,7 @@ export class UIManager {
 
       const iconClass = name === 'Favoritas' ? 'ph-fill ph-heart' : 'ph-fill ph-playlist';
       const iconStyle = name === 'Favoritas' ? 'background: rgba(255, 46, 196, 0.2); color: var(--neon-magenta);' : '';
+      const safeName = escapeHtml(name);
 
       div.innerHTML = `
         <div class="playlist-picker-left">
@@ -577,7 +595,7 @@ export class UIManager {
             <i class="${iconClass}"></i>
           </div>
           <div class="playlist-picker-info">
-            <h4 class="playlist-picker-name">${name}</h4>
+            <h4 class="playlist-picker-name">${safeName}</h4>
             <span class="playlist-picker-count">${items.length} canción${items.length === 1 ? '' : 'es'}</span>
           </div>
         </div>

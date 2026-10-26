@@ -1,5 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain, dialog, Tray, Menu, globalShortcut } from 'electron';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import fs from 'fs';
 import youtubedl from 'youtube-dl-exec';
@@ -24,6 +24,34 @@ function getDownloadFolder() {
   }
   carpetaDescargasActual = auraDir;
   return carpetaDescargasActual;
+}
+
+function resolveSafeTrackPath(folder, titulo) {
+  const baseFolder = resolve(folder);
+  const cleanTitle = (titulo || 'AURA_Track')
+    .replace(/[\\/:*?"<>|\r\n\t]/g, '')
+    .replace(/\.\.+/g, '')
+    .trim() || 'AURA_Track';
+  const finalPath = resolve(baseFolder, `${cleanTitle}.mp3`);
+  if (!finalPath.startsWith(baseFolder)) {
+    throw new Error('Acceso a ruta de archivo no autorizada');
+  }
+  return finalPath;
+}
+
+function isValidYouTubeUrl(input) {
+  if (typeof input !== 'string') return false;
+  const trimmed = input.trim();
+  if (!trimmed || trimmed.startsWith('-')) return false;
+  try {
+    const parsed = new URL(trimmed);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+    const hostname = parsed.hostname.toLowerCase().replace(/^www\./, '');
+    const allowed = ['youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be'];
+    return allowed.some((domain) => hostname === domain || hostname.endsWith('.' + domain));
+  } catch {
+    return false;
+  }
 }
 
 function createWindow() {
@@ -260,8 +288,7 @@ app.whenReady().then(() => {
   ipcMain.handle('archivo:verificar', (_, titulo) => {
     try {
       const folder = getDownloadFolder();
-      const limpio = (titulo || '').replace(/[\\/:*?"<>|]/g, '').trim();
-      const ruta = join(folder, `${limpio}.mp3`);
+      const ruta = resolveSafeTrackPath(folder, titulo);
       return fs.existsSync(ruta) ? ruta : null;
     } catch {
       return null;
@@ -317,8 +344,7 @@ app.whenReady().then(() => {
   ipcMain.handle('archivo:eliminar', (_, titulo) => {
     try {
       const folder = getDownloadFolder();
-      const limpio = (titulo || '').replace(/[\\/:*?"<>|]/g, '').trim();
-      const ruta = join(folder, `${limpio}.mp3`);
+      const ruta = resolveSafeTrackPath(folder, titulo);
       if (fs.existsSync(ruta)) {
         fs.unlinkSync(ruta);
         return true;
@@ -332,15 +358,18 @@ app.whenReady().then(() => {
   // 5. Descargar MP3 desde YouTube
   ipcMain.handle('youtube:descargar', async (_, { url, titulo }) => {
     try {
+      if (!isValidYouTubeUrl(url)) {
+        return { exito: false, error: 'URL de YouTube no válida o no permitida' };
+      }
+
       const folder = getDownloadFolder();
-      const limpio = (titulo || 'AURA_Track').replace(/[\\/:*?"<>|]/g, '').trim();
-      const rutaFinal = join(folder, `${limpio}.mp3`);
+      const rutaFinal = resolveSafeTrackPath(folder, titulo);
 
       // Usar youtube-dl-exec para descargar el audio en MP3 de máxima calidad
       await youtubedl(url, {
         extractAudio: true,
         audioFormat: 'mp3',
-        output: `"${rutaFinal}"`,
+        output: rutaFinal,
         noWarnings: true,
         noCheckCertificate: true,
         noPlaylist: true

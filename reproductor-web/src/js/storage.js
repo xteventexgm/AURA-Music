@@ -14,7 +14,8 @@ const DEFAULT_STATE = {
   busquedasRecientes: [],
   ultimoPool: [],
   ultimoCursor: 0,
-  volumen: 1.0
+  volumen: 1.0,
+  descargasLocales: []
 };
 
 export function loadStoredData() {
@@ -30,7 +31,8 @@ export function loadStoredData() {
         busquedasRecientes: Array.isArray(data.busquedasRecientes) ? data.busquedasRecientes : [],
         ultimoPool: Array.isArray(data.ultimoPool) ? data.ultimoPool : [],
         ultimoCursor: typeof data.ultimoCursor === 'number' ? data.ultimoCursor : 0,
-        volumen: typeof data.volumen === 'number' ? data.volumen : 1.0
+        volumen: typeof data.volumen === 'number' ? data.volumen : 1.0,
+        descargasLocales: Array.isArray(data.descargasLocales) ? data.descargasLocales : []
       };
     }
 

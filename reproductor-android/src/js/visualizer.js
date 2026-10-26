@@ -17,7 +17,13 @@ export class AudioVisualizer {
     if (this.canvas) {
       this.ctx = this.canvas.getContext('2d');
       this.resize();
-      window.addEventListener('resize', () => this.resize());
+      this.drawIdle();
+      window.addEventListener('resize', () => {
+        this.resize();
+        if (this.audio.paused || this.audio.ended) {
+          this.drawIdle();
+        }
+      });
     }
   }
 
@@ -60,20 +66,23 @@ export class AudioVisualizer {
     let proceduralPhase = 0;
 
     const render = () => {
+      const isPlaying = !this.audio.paused && !this.audio.ended && this.audio.currentTime > 0;
+      if (!isPlaying) {
+        this.drawIdle();
+        this.animationId = null;
+        return;
+      }
+
       this.animationId = requestAnimationFrame(render);
+      proceduralPhase += 0.08;
 
       const width = this.canvas.width;
       const height = this.canvas.height;
       this.ctx.clearRect(0, 0, width, height);
 
-      const isPlaying = !this.audio.paused && !this.audio.ended && this.audio.currentTime > 0;
       const barCount = 28;
       const barWidth = (width / barCount) * 0.65;
       const gap = (width - barCount * barWidth) / (barCount + 1);
-
-      if (isPlaying) {
-        proceduralPhase += 0.08;
-      }
 
       // Gradiente Neón AURA (Cian a Magenta)
       const gradient = this.ctx.createLinearGradient(0, height, 0, 0);
@@ -84,27 +93,42 @@ export class AudioVisualizer {
       this.ctx.fillStyle = gradient;
 
       for (let i = 0; i < barCount; i++) {
-        let barHeight = 6;
-
-        if (isPlaying) {
-          // Onda rítmica sintética basada en tiempo y posición para máxima fluidez
-          const wave1 = Math.sin(proceduralPhase + i * 0.35) * 0.5 + 0.5;
-          const wave2 = Math.cos(proceduralPhase * 0.7 - i * 0.25) * 0.5 + 0.5;
-          const energy = (wave1 * 0.6 + wave2 * 0.4);
-          barHeight = 8 + energy * (height * 0.75);
-        } else {
-          barHeight = 4 + Math.sin(i * 0.5) * 2;
-        }
+        const wave1 = Math.sin(proceduralPhase + i * 0.35) * 0.5 + 0.5;
+        const wave2 = Math.cos(proceduralPhase * 0.7 - i * 0.25) * 0.5 + 0.5;
+        const energy = (wave1 * 0.6 + wave2 * 0.4);
+        const barHeight = 8 + energy * (height * 0.75);
 
         const x = gap + i * (barWidth + gap);
         const y = height - barHeight;
 
-        // Barra con esquinas redondeadas
         this.drawRoundedRect(x, y, barWidth, barHeight, 3);
       }
     };
 
     render();
+  }
+
+  drawIdle() {
+    if (!this.canvas || !this.ctx) return;
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    this.ctx.clearRect(0, 0, width, height);
+
+    const barCount = 28;
+    const barWidth = (width / barCount) * 0.65;
+    const gap = (width - barCount * barWidth) / (barCount + 1);
+
+    const gradient = this.ctx.createLinearGradient(0, height, 0, 0);
+    gradient.addColorStop(0, 'rgba(0, 240, 255, 0.15)');
+    gradient.addColorStop(1, 'rgba(255, 46, 196, 0.3)');
+    this.ctx.fillStyle = gradient;
+
+    for (let i = 0; i < barCount; i++) {
+      const barHeight = 4 + Math.sin(i * 0.5) * 2;
+      const x = gap + i * (barWidth + gap);
+      const y = height - barHeight;
+      this.drawRoundedRect(x, y, barWidth, barHeight, 2);
+    }
   }
 
   drawRoundedRect(x, y, width, height, radius) {
@@ -125,5 +149,6 @@ export class AudioVisualizer {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
+    this.drawIdle();
   }
 }
